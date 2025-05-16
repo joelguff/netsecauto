@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "netsec-automation"
+version = "0.1.0"
+description = "Network Security Automation Tool"
+authors = ["Joel Aaron Guff"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+flask = "2.2.5"  # Pin to a specific version known to be compatible
+flask-sqlalchemy = "*"
+flask-login = "*"
+werkzeug = "2.2.3"  # Pin to a specific version compatible with flask 2.2.5
+netmiko = "3.3.3"
+gunicorn = "*"
+scikit-learn = "*"
+textfsm = "1.1.2"
+email-validator = "*"
+flask-dance = "*"
+oauthlib = "*"
+pyjwt = "*"
+psycopg2-binary = "*"
+openai = "*"
+sqlalchemy = "^2.0.41"
+flask-wtf = "^1.2.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

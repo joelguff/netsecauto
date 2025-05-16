@@ -1,0 +1,20 @@
+{
+  "Router1": {
+    "ip": "192.168.1.1",
+    "device_type": "cisco_ios",
+    "username": "admin",
+    "password": "cisco123"
+  },
+  "Switch1": {
+    "ip": "192.168.1.2",
+    "device_type": "cisco_ios",
+    "username": "admin",
+    "password": "cisco123"
+  },
+  "Firewall1": {
+    "ip": "192.168.1.3",
+    "device_type": "cisco_asa",
+    "username": "admin",
+    "password": "cisco123"
+  }
+}

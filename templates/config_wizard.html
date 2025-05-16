@@ -1,0 +1,1684 @@
+{% extends "layout.html" %}
+
+{% block title %}AI Configuration Wizard{% endblock %}
+
+{% block styles %}
+<style>
+  .wizard-container {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .wizard-section {
+    margin-bottom: 20px;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+  }
+  
+  .wizard-header {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .guidance-box {
+    background-color: #e7f5fe;
+    border-left: 4px solid #17a2b8;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 0 8px 8px 0;
+  }
+  
+  .security-score {
+    font-size: 2rem;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .score-container {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+  }
+  
+  .score-high {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  
+  .score-medium {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  
+  .score-low {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+  
+  .recommendation-item {
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border-left: 3px solid #6c757d;
+  }
+  
+  .recommendation-item.critical {
+    border-left-color: #dc3545;
+  }
+  
+  .recommendation-item.important {
+    border-left-color: #fd7e14;
+  }
+  
+  .recommendation-item.good {
+    border-left-color: #28a745;
+  }
+  
+  .nav-tabs .nav-item .nav-link.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+  
+  #configOutput {
+    font-family: monospace;
+    background-color: #343a40;
+    color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .analysis-result {
+    display: none;
+  }
+  
+  .device-type-icon {
+    font-size: 2rem;
+    margin-right: 10px;
+  }
+  
+  .loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .template-card {
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  
+  .template-card:hover {
+    transform: translateY(-5px);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="wizard-header">
+        <h1 class="display-5">
+          <i class="fas fa-magic mr-2"></i> AI-Powered Network Configuration Wizard
+        </h1>
+        <p class="lead">Create optimised, secure network configurations with intelligent assistance</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-md-3">
+      <div class="wizard-container">
+        <h5><i class="fas fa-sitemap"></i> Device Type</h5>
+        <div class="form-group">
+          <select id="deviceTypeSelect" class="form-control">
+            <option value="">Select Device Type</option>
+            <option value="cisco_ios">Cisco IOS Router</option>
+            <option value="cisco_asa">Cisco ASA Firewall</option>
+            <option value="juniper">Juniper JunOS</option>
+          </select>
+        </div>
+        
+        <div id="deviceOptions" class="mt-4" style="display: none;">
+          <h5><i class="fas fa-server"></i> Options</h5>
+          <div class="list-group">
+            <a href="#" class="list-group-item list-group-item-action" data-section="basic">
+              <i class="fas fa-cog"></i> Basic Settings
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" data-section="interfaces">
+              <i class="fas fa-network-wired"></i> Interfaces
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" data-section="routing">
+              <i class="fas fa-route"></i> Routing
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" data-section="security">
+              <i class="fas fa-shield-alt"></i> Security
+            </a>
+            <a href="#" class="list-group-item list-group-item-action" data-section="management">
+              <i class="fas fa-tasks"></i> Management
+            </a>
+          </div>
+        </div>
+        
+        <div id="deviceActions" class="mt-4" style="display: none;">
+          <h5><i class="fas fa-play"></i> Actions</h5>
+          <div class="d-grid gap-2">
+            <button id="generateBtn" class="btn btn-primary btn-block">
+              <i class="fas fa-code"></i> Generate Configuration
+            </button>
+            <button id="analyzeBtn" class="btn btn-info btn-block">
+              <i class="fas fa-search"></i> Analyze Configuration
+            </button>
+            <button id="deployBtn" class="btn btn-success btn-block">
+              <i class="fas fa-upload"></i> Deploy Configuration
+            </button>
+            <button id="saveTemplateBtn" class="btn btn-outline-secondary btn-block">
+              <i class="fas fa-save"></i> Save as Template
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-9">
+      <!-- Guidance Section -->
+      <div id="guidanceSection" class="wizard-container" style="display: none;">
+        <h4 id="sectionTitle">Section Title</h4>
+        <div class="guidance-box">
+          <div id="guidanceContent">
+            <p><i class="fas fa-info-circle"></i> Select a device type and section to get started.</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Configuration Form -->
+      <div id="configForm" class="wizard-container" style="display: none;">
+        <!-- Basic Settings Form -->
+        <div id="basic-form" class="config-section-form" style="display: none;">
+          <h4>Basic Settings</h4>
+          <div class="form-group">
+            <label for="hostname">Hostname</label>
+            <input type="text" class="form-control" id="hostname" placeholder="Enter device hostname">
+          </div>
+          <div class="form-group">
+            <label for="domain">Domain Name</label>
+            <input type="text" class="form-control" id="domain" placeholder="Enter domain name">
+          </div>
+          <div class="form-group">
+            <label for="enablePassword">Enable Password</label>
+            <input type="password" class="form-control" id="enablePassword" placeholder="Enter enable password">
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="enableSSH">
+            <label class="form-check-label" for="enableSSH">Enable SSH</label>
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="disableTelnet" checked>
+            <label class="form-check-label" for="disableTelnet">Disable Telnet</label>
+          </div>
+        </div>
+        
+        <!-- Interfaces Form -->
+        <div id="interfaces-form" class="config-section-form" style="display: none;">
+          <h4>Interfaces Configuration</h4>
+          <div id="interfacesList">
+            <div class="card mb-3">
+              <div class="card-header">
+                Interface #1
+                <button type="button" class="btn btn-sm btn-danger float-right delete-interface">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label>Interface Name</label>
+                  <input type="text" class="form-control interface-name" placeholder="e.g. GigabitEthernet0/1">
+                </div>
+                <div class="form-group">
+                  <label>IP Address</label>
+                  <input type="text" class="form-control interface-ip" placeholder="e.g. 192.168.1.1">
+                </div>
+                <div class="form-group">
+                  <label>Subnet Mask</label>
+                  <input type="text" class="form-control interface-mask" placeholder="e.g. 255.255.255.0">
+                </div>
+                <div class="form-group">
+                  <label>Description</label>
+                  <input type="text" class="form-control interface-desc" placeholder="e.g. LAN Interface">
+                </div>
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input interface-enabled" checked>
+                  <label class="form-check-label">Enable Interface</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button id="addInterfaceBtn" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Interface
+          </button>
+        </div>
+        
+        <!-- Routing Form -->
+        <div id="routing-form" class="config-section-form" style="display: none;">
+          <h4>Routing Configuration</h4>
+          <div class="form-group">
+            <label>Routing Protocol</label>
+            <select class="form-control" id="routingProtocol">
+              <option value="none">None (Static Routes Only)</option>
+              <option value="rip">RIP</option>
+              <option value="ospf">OSPF</option>
+              <option value="eigrp">EIGRP</option>
+              <option value="bgp">BGP</option>
+            </select>
+          </div>
+          
+          <div id="staticRoutes">
+            <h5>Static Routes</h5>
+            <div id="staticRoutesList">
+              <div class="card mb-3">
+                <div class="card-header">
+                  Static Route #1
+                  <button type="button" class="btn btn-sm btn-danger float-right delete-route">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label>Network</label>
+                    <input type="text" class="form-control route-network" placeholder="e.g. 10.0.0.0">
+                  </div>
+                  <div class="form-group">
+                    <label>Subnet Mask</label>
+                    <input type="text" class="form-control route-mask" placeholder="e.g. 255.0.0.0">
+                  </div>
+                  <div class="form-group">
+                    <label>Next Hop</label>
+                    <input type="text" class="form-control route-next-hop" placeholder="e.g. 192.168.1.254">
+                  </div>
+                  <div class="form-group">
+                    <label>Administrative Distance</label>
+                    <input type="number" class="form-control route-distance" value="1">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button id="addRouteBtn" class="btn btn-primary">
+              <i class="fas fa-plus"></i> Add Static Route
+            </button>
+          </div>
+          
+          <div id="ospfConfig" style="display: none;" class="mt-4">
+            <h5>OSPF Configuration</h5>
+            <div class="form-group">
+              <label>Process ID</label>
+              <input type="number" class="form-control" id="ospfProcessId" value="1">
+            </div>
+            <div class="form-group">
+              <label>Router ID</label>
+              <input type="text" class="form-control" id="ospfRouterId" placeholder="e.g. 1.1.1.1">
+            </div>
+            <div id="ospfNetworksList">
+              <div class="card mb-3">
+                <div class="card-header">
+                  OSPF Network #1
+                  <button type="button" class="btn btn-sm btn-danger float-right delete-ospf-network">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label>Network</label>
+                    <input type="text" class="form-control ospf-network" placeholder="e.g. 192.168.1.0">
+                  </div>
+                  <div class="form-group">
+                    <label>Wildcard Mask</label>
+                    <input type="text" class="form-control ospf-wildcard" placeholder="e.g. 0.0.0.255">
+                  </div>
+                  <div class="form-group">
+                    <label>Area</label>
+                    <input type="text" class="form-control ospf-area" value="0">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button id="addOspfNetworkBtn" class="btn btn-primary">
+              <i class="fas fa-plus"></i> Add OSPF Network
+            </button>
+          </div>
+        </div>
+        
+        <!-- Security Form -->
+        <div id="security-form" class="config-section-form" style="display: none;">
+          <h4>Security Configuration</h4>
+          
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="enableAAA" checked>
+            <label class="form-check-label" for="enableAAA">Enable AAA</label>
+          </div>
+          
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="enablePasswordEncryption" checked>
+            <label class="form-check-label" for="enablePasswordEncryption">Enable Password Encryption</label>
+          </div>
+          
+          <h5>Access Control Lists</h5>
+          <div id="aclList">
+            <div class="card mb-3">
+              <div class="card-header">
+                ACL #1
+                <button type="button" class="btn btn-sm btn-danger float-right delete-acl">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label>ACL Name/Number</label>
+                  <input type="text" class="form-control acl-name" placeholder="e.g. 100 or BLOCK_SSH">
+                </div>
+                <div class="form-group">
+                  <label>ACL Type</label>
+                  <select class="form-control acl-type">
+                    <option value="standard">Standard</option>
+                    <option value="extended">Extended</option>
+                    <option value="named">Named</option>
+                  </select>
+                </div>
+                <div class="acl-entries">
+                  <div class="card mb-2">
+                    <div class="card-body">
+                      <div class="form-group">
+                        <label>Action</label>
+                        <select class="form-control acl-action">
+                          <option value="permit">Permit</option>
+                          <option value="deny">Deny</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label>Source</label>
+                        <input type="text" class="form-control acl-source" placeholder="e.g. any or 10.0.0.0 0.255.255.255">
+                      </div>
+                      <div class="form-group acl-ext-only">
+                        <label>Destination</label>
+                        <input type="text" class="form-control acl-destination" placeholder="e.g. any or 192.168.1.0 0.0.0.255">
+                      </div>
+                      <div class="form-group acl-ext-only">
+                        <label>Protocol</label>
+                        <select class="form-control acl-protocol">
+                          <option value="ip">IP</option>
+                          <option value="tcp">TCP</option>
+                          <option value="udp">UDP</option>
+                          <option value="icmp">ICMP</option>
+                        </select>
+                      </div>
+                      <div class="form-row acl-ext-only">
+                        <div class="col">
+                          <label>Source Port</label>
+                          <input type="text" class="form-control acl-source-port" placeholder="e.g. eq 80">
+                        </div>
+                        <div class="col">
+                          <label>Destination Port</label>
+                          <input type="text" class="form-control acl-dest-port" placeholder="e.g. eq 22">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-info add-acl-entry">
+                  <i class="fas fa-plus"></i> Add ACL Entry
+                </button>
+              </div>
+            </div>
+          </div>
+          <button id="addAclBtn" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add ACL
+          </button>
+        </div>
+        
+        <!-- Management Form -->
+        <div id="management-form" class="config-section-form" style="display: none;">
+          <h4>Management Configuration</h4>
+          
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="enableSNMP">
+            <label class="form-check-label" for="enableSNMP">Enable SNMP</label>
+          </div>
+          
+          <div id="snmpConfig" style="display: none;">
+            <div class="form-group">
+              <label>SNMP Community</label>
+              <input type="text" class="form-control" id="snmpCommunity" placeholder="Enter SNMP community string">
+            </div>
+            <div class="form-group">
+              <label>SNMP Location</label>
+              <input type="text" class="form-control" id="snmpLocation" placeholder="Enter device location">
+            </div>
+            <div class="form-group">
+              <label>SNMP Contact</label>
+              <input type="text" class="form-control" id="snmpContact" placeholder="Enter contact information">
+            </div>
+          </div>
+          
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="enableNTP" checked>
+            <label class="form-check-label" for="enableNTP">Enable NTP</label>
+          </div>
+          
+          <div id="ntpConfig">
+            <div class="form-group">
+              <label>NTP Server</label>
+              <input type="text" class="form-control" id="ntpServer" placeholder="Enter NTP server IP">
+            </div>
+          </div>
+          
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="enableSyslog" checked>
+            <label class="form-check-label" for="enableSyslog">Enable Syslog</label>
+          </div>
+          
+          <div id="syslogConfig">
+            <div class="form-group">
+              <label>Syslog Server</label>
+              <input type="text" class="form-control" id="syslogServer" placeholder="Enter syslog server IP">
+            </div>
+            <div class="form-group">
+              <label>Logging Level</label>
+              <select class="form-control" id="loggingLevel">
+                <option value="emergencies">Emergencies (0)</option>
+                <option value="alerts">Alerts (1)</option>
+                <option value="critical">Critical (2)</option>
+                <option value="errors">Errors (3)</option>
+                <option value="warnings">Warnings (4)</option>
+                <option value="notifications">Notifications (5)</option>
+                <option value="informational" selected>Informational (6)</option>
+                <option value="debugging">Debugging (7)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Analysis and Output Section -->
+      <div id="outputSection" class="wizard-container" style="display: none;">
+        <ul class="nav nav-tabs" id="outputTabs" role="tablist">
+          <li class="nav-item">
+            <a class="nav-link active" id="config-tab" data-toggle="tab" href="#config" role="tab">
+              <i class="fas fa-code"></i> Configuration
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="analysis-tab" data-toggle="tab" href="#analysis" role="tab">
+              <i class="fas fa-chart-pie"></i> Analysis
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="deploy-tab" data-toggle="tab" href="#deploy" role="tab">
+              <i class="fas fa-upload"></i> Deploy
+            </a>
+          </li>
+        </ul>
+        
+        <div class="tab-content p-3" id="outputTabContent">
+          <div class="tab-pane fade show active" id="config" role="tabpanel">
+            <pre id="configOutput">Select a device type and configure settings to generate a configuration.</pre>
+          </div>
+          
+          <div class="tab-pane fade" id="analysis" role="tabpanel">
+            <div class="analysis-result" id="analysisResult">
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-body">
+                      <h5 class="card-title text-center">Security Score</h5>
+                      <div id="securityScoreContainer" class="score-container score-medium">
+                        <div class="security-score"><span id="securityScore">0</span>%</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-body">
+                      <h5 class="card-title text-center">Issues Found</h5>
+                      <div class="security-score text-danger"><span id="issuesFound">0</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-body">
+                      <h5 class="card-title text-center">Compliance</h5>
+                      <div class="security-score"><span id="complianceStatus">-</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card mb-4">
+                <div class="card-header">
+                  <h5><i class="fas fa-shield-alt"></i> Security Recommendations</h5>
+                </div>
+                <div class="card-body">
+                  <div id="recommendationsList">
+                    <p>No recommendations available. Analyze a configuration first.</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card">
+                <div class="card-header">
+                  <h5><i class="fas fa-brain"></i> AI Analysis</h5>
+                </div>
+                <div class="card-body">
+                  <div id="mlAnalysis">
+                    <p>No ML analysis available. Analyze a configuration first.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="loading-spinner" id="analysisLoading">
+              <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+              </div>
+              <p class="mt-2">Analyzing configuration with AI models...</p>
+            </div>
+          </div>
+          
+          <div class="tab-pane fade" id="deploy" role="tabpanel">
+            <div class="card">
+              <div class="card-header">
+                <h5><i class="fas fa-server"></i> Select Deployment Target</h5>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label for="deployDevice">Target Device</label>
+                  <select class="form-control" id="deployDevice">
+                    <option value="">Select a device</option>
+                  </select>
+                </div>
+                
+                <div class="form-check mb-3">
+                  <input type="checkbox" class="form-check-input" id="backupBeforeDeploy" checked>
+                  <label class="form-check-label" for="backupBeforeDeploy">Backup configuration before deploying</label>
+                </div>
+                
+                <button id="confirmDeployBtn" class="btn btn-primary">
+                  <i class="fas fa-upload"></i> Deploy Configuration
+                </button>
+                
+                <div id="deployStatus" class="alert mt-3" style="display: none;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Templates Section -->
+      <div id="templatesSection" class="wizard-container">
+        <h4><i class="fas fa-bookmark"></i> Configuration Templates</h4>
+        <p>
+          Start with a pre-configured template or create your own custom configuration from scratch.
+        </p>
+        
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <div class="card template-card" data-template="cisco_ios_basic">
+              <div class="card-body">
+                <h5 class="card-title">
+                  <i class="fas fa-router text-primary device-type-icon"></i>
+                  Cisco IOS Router
+                </h5>
+                <p class="card-text">Basic secure router configuration with SSH access and standard security features.</p>
+                <div class="text-muted small">Basic • Security • Management</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-4 mb-3">
+            <div class="card template-card" data-template="cisco_asa_basic">
+              <div class="card-body">
+                <h5 class="card-title">
+                  <i class="fas fa-shield-alt text-danger device-type-icon"></i>
+                  Cisco ASA Firewall
+                </h5>
+                <p class="card-text">Standard firewall configuration with secure zones and basic filtering rules.</p>
+                <div class="text-muted small">Firewall • ACLs • NAT</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-4 mb-3">
+            <div class="card template-card" data-template="juniper_basic">
+              <div class="card-body">
+                <h5 class="card-title">
+                  <i class="fas fa-server text-success device-type-icon"></i>
+                  Juniper JunOS
+                </h5>
+                <p class="card-text">Basic Juniper device configuration with security and routing features.</p>
+                <div class="text-muted small">JunOS • Routing • Security</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <div class="card template-card" data-template="cisco_ios_branch">
+              <div class="card-body">
+                <h5 class="card-title">
+                  <i class="fas fa-code-branch text-primary device-type-icon"></i>
+                  Branch Router
+                </h5>
+                <p class="card-text">Configuration optimised for branch office deployment with VPN and QoS.</p>
+                <div class="text-muted small">Branch • VPN • QoS</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-4 mb-3">
+            <div class="card template-card" data-template="cisco_dmz">
+              <div class="card-body">
+                <h5 class="card-title">
+                  <i class="fas fa-network-wired text-warning device-type-icon"></i>
+                  DMZ Configuration
+                </h5>
+                <p class="card-text">DMZ zone configuration with appropriate security policies and isolation.</p>
+                <div class="text-muted small">DMZ • Security • ACLs</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-4 mb-3">
+            <div class="card template-card" data-template="custom">
+              <div class="card-body text-center">
+                <h5 class="card-title">
+                  <i class="fas fa-plus-circle text-secondary device-type-icon"></i>
+                  Custom Configuration
+                </h5>
+                <p class="card-text">Start from scratch and build a custom configuration.</p>
+                <div class="text-muted small">Custom • Blank</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="saveTemplateModal" class="modal fade" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Save as Template</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <div class="form-group">
+                  <label for="templateName">Template Name</label>
+                  <input type="text" class="form-control" id="templateName" placeholder="Enter template name">
+                </div>
+                <div class="form-group">
+                  <label for="templateDescription">Description</label>
+                  <textarea class="form-control" id="templateDescription" rows="3" placeholder="Enter template description"></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmSaveTemplate">Save Template</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  $(document).ready(function() {
+    // Global variables
+    let currentDeviceType = '';
+    let currentSection = '';
+    let generatedConfig = '';
+    let analysisResult = null;
+    
+    // Handle device type selection
+    $('#deviceTypeSelect').change(function() {
+      currentDeviceType = $(this).val();
+      if (currentDeviceType) {
+        $('#deviceOptions').show();
+        $('#deviceActions').show();
+        $('#templatesSection').hide();
+      } else {
+        $('#deviceOptions').hide();
+        $('#deviceActions').hide();
+        $('#templatesSection').show();
+      }
+      
+      // Reset current section
+      currentSection = '';
+      $('.list-group-item').removeClass('active');
+      
+      // Hide all forms and sections
+      $('.config-section-form').hide();
+      $('#guidanceSection').hide();
+      $('#configForm').hide();
+      $('#outputSection').hide();
+    });
+    
+    // Handle section selection
+    $('.list-group-item').click(function(e) {
+      e.preventDefault();
+      
+      // Update UI
+      $('.list-group-item').removeClass('active');
+      $(this).addClass('active');
+      
+      // Get section and update guidance
+      currentSection = $(this).data('section');
+      updateGuidance();
+      
+      // Show the corresponding form section
+      $('.config-section-form').hide();
+      $('#' + currentSection + '-form').show();
+      
+      // Show form container
+      $('#configForm').show();
+    });
+    
+    // Function to update guidance based on device type and section
+    function updateGuidance() {
+      if (!currentDeviceType || !currentSection) return;
+      
+      // Show loading state
+      $('#guidanceContent').html('<p><i class="fas fa-spinner fa-spin"></i> Loading guidance...</p>');
+      $('#guidanceSection').show();
+      $('#sectionTitle').text(capitalizeFirstLetter(currentSection) + ' Configuration');
+      
+      // Fetch guidance from API
+      $.ajax({
+        url: '/api/config_wizard/guidance',
+        data: {
+          device_type: currentDeviceType,
+          section: currentSection
+        },
+        method: 'GET',
+        success: function(data) {
+          if (data.status === 'success') {
+            $('#guidanceContent').html(data.guidance);
+          } else {
+            $('#guidanceContent').html('<p class="text-danger"><i class="fas fa-exclamation-triangle"></i> ' + (data.message || 'Error loading guidance') + '</p>');
+          }
+        },
+        error: function() {
+          $('#guidanceContent').html('<p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Error loading guidance. Please try again.</p>');
+        }
+      });
+    }
+    
+    // Generate Configuration button click
+    $('#generateBtn').click(function() {
+      // Collect all form data
+      const configValues = collectFormData();
+      
+      // Show loading state
+      $('#configOutput').text('Generating configuration...');
+      $('#outputSection').show();
+      $('#outputTabs a[href="#config"]').tab('show');
+      
+      // Generate configuration via API
+      $.ajax({
+        url: '/api/config_wizard/generate',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+          device_type: currentDeviceType,
+          config_values: configValues
+        }),
+        success: function(data) {
+          if (data.status === 'success') {
+            generatedConfig = data.config;
+            $('#configOutput').text(data.config);
+            
+            // Also update analysis if provided
+            if (data.analysis) {
+              analysisResult = data.analysis;
+              updateAnalysisTab(data.analysis);
+            }
+          } else {
+            $('#configOutput').text('Error: ' + (data.message || 'Failed to generate configuration'));
+          }
+        },
+        error: function(xhr) {
+          let errorMsg = 'Failed to generate configuration. Please try again.';
+          try {
+            const response = JSON.parse(xhr.responseText);
+            if (response.message) {
+              errorMsg = 'Error: ' + response.message;
+            }
+          } catch (e) {}
+          $('#configOutput').text(errorMsg);
+        }
+      });
+    });
+    
+    // Analyze Configuration button click
+    $('#analyzeBtn').click(function() {
+      // Get the current configuration from the output or generate a new one
+      const config = generatedConfig || collectFormData();
+      
+      // Show loading state
+      $('#analysisResult').hide();
+      $('#analysisLoading').show();
+      $('#outputSection').show();
+      $('#outputTabs a[href="#analysis"]').tab('show');
+      
+      // Analyze configuration via API
+      $.ajax({
+        url: '/api/config_wizard/analyze',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+          device_type: currentDeviceType,
+          config: typeof config === 'string' ? config : JSON.stringify(config)
+        }),
+        success: function(data) {
+          $('#analysisLoading').hide();
+          $('#analysisResult').show();
+          
+          if (data.status === 'success') {
+            analysisResult = data;
+            updateAnalysisTab(data);
+          } else {
+            $('#recommendationsList').html('<p class="text-danger"><i class="fas fa-exclamation-triangle"></i> ' + (data.message || 'Analysis failed') + '</p>');
+            $('#mlAnalysis').html('<p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Error performing AI analysis</p>');
+          }
+        },
+        error: function() {
+          $('#analysisLoading').hide();
+          $('#analysisResult').show();
+          $('#recommendationsList').html('<p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Error analyzing configuration. Please try again.</p>');
+          $('#mlAnalysis').html('<p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Error performing AI analysis</p>');
+        }
+      });
+    });
+    
+    // Load devices for deployment
+    function loadDevices() {
+      $.ajax({
+        url: '/api/devices',
+        method: 'GET',
+        success: function(data) {
+          const select = $('#deployDevice');
+          select.empty();
+          select.append('<option value="">Select a device</option>');
+          
+          // Filter devices by type if needed
+          const filteredDevices = currentDeviceType ? 
+            data.filter(device => device.device_type.toLowerCase().includes(currentDeviceType.replace('_', ''))) : 
+            data;
+          
+          $.each(filteredDevices, function(i, device) {
+            select.append(`<option value="${device.id}">${device.name} (${device.ip_address})</option>`);
+          });
+        },
+        error: function() {
+          $('#deployDevice').html('<option value="">Error loading devices</option>');
+        }
+      });
+    }
+    
+    // Deploy tab shown event
+    $('a[href="#deploy"]').on('shown.bs.tab', function() {
+      loadDevices();
+    });
+    
+    // Deploy Configuration button click
+    $('#confirmDeployBtn').click(function() {
+      const deviceId = $('#deployDevice').val();
+      const backupFirst = $('#backupBeforeDeploy').is(':checked');
+      
+      if (!deviceId) {
+        $('#deployStatus').removeClass('alert-success alert-danger').addClass('alert-warning')
+          .text('Please select a target device').show();
+        return;
+      }
+      
+      if (!generatedConfig) {
+        $('#deployStatus').removeClass('alert-success alert-danger').addClass('alert-warning')
+          .text('No configuration available. Please generate a configuration first.').show();
+        return;
+      }
+      
+      // Show loading state
+      $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Deploying...');
+      $('#deployStatus').hide();
+      
+      // Deploy configuration via API
+      $.ajax({
+        url: '/api/config_wizard/deploy',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+          device_id: deviceId,
+          config: generatedConfig,
+          backup_first: backupFirst
+        }),
+        success: function(data) {
+          $('#confirmDeployBtn').prop('disabled', false).html('<i class="fas fa-upload"></i> Deploy Configuration');
+          
+          if (data.status === 'success') {
+            $('#deployStatus').removeClass('alert-warning alert-danger').addClass('alert-success')
+              .text('Configuration deployed successfully!').show();
+          } else {
+            $('#deployStatus').removeClass('alert-success alert-warning').addClass('alert-danger')
+              .text('Error: ' + (data.message || 'Failed to deploy configuration')).show();
+          }
+        },
+        error: function(xhr) {
+          $('#confirmDeployBtn').prop('disabled', false).html('<i class="fas fa-upload"></i> Deploy Configuration');
+          
+          let errorMsg = 'Failed to deploy configuration. Please try again.';
+          try {
+            const response = JSON.parse(xhr.responseText);
+            if (response.message) {
+              errorMsg = 'Error: ' + response.message;
+            }
+          } catch (e) {}
+          
+          $('#deployStatus').removeClass('alert-success alert-warning').addClass('alert-danger')
+            .text(errorMsg).show();
+        }
+      });
+    });
+    
+    // Save Template button click
+    $('#saveTemplateBtn').click(function() {
+      $('#saveTemplateModal').modal('show');
+    });
+    
+    // Confirm Save Template button click
+    $('#confirmSaveTemplate').click(function() {
+      const name = $('#templateName').val();
+      const description = $('#templateDescription').val();
+      
+      if (!name) {
+        alert('Please enter a template name');
+        return;
+      }
+      
+      if (!generatedConfig) {
+        alert('No configuration available. Please generate a configuration first.');
+        return;
+      }
+      
+      // Save template via API
+      $.ajax({
+        url: '/api/config_wizard/save_template',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+          name: name,
+          description: description,
+          device_type: currentDeviceType,
+          config: generatedConfig
+        }),
+        success: function(data) {
+          if (data.status === 'success') {
+            $('#saveTemplateModal').modal('hide');
+            alert('Template saved successfully!');
+          } else {
+            alert('Error: ' + (data.message || 'Failed to save template'));
+          }
+        },
+        error: function() {
+          alert('Failed to save template. Please try again.');
+        }
+      });
+    });
+    
+    // Template card click
+    $('.template-card').click(function() {
+      const templateType = $(this).data('template');
+      
+      if (templateType === 'custom') {
+        // Just show the device type selector
+        $('#deviceTypeSelect').focus();
+        return;
+      }
+      
+      // Set the device type based on template
+      let deviceType = 'cisco_ios';
+      if (templateType.includes('asa')) {
+        deviceType = 'cisco_asa';
+      } else if (templateType.includes('juniper')) {
+        deviceType = 'juniper';
+      }
+      
+      $('#deviceTypeSelect').val(deviceType).trigger('change');
+      
+      // TODO: Load template data and populate forms
+      // For now, we'll just select the basic section
+      setTimeout(function() {
+        $('.list-group-item[data-section="basic"]').click();
+      }, 100);
+    });
+    
+    // Add Interface button click
+    $('#addInterfaceBtn').click(function() {
+      const interfaceCount = $('#interfacesList .card').length + 1;
+      const newInterface = `
+        <div class="card mb-3">
+          <div class="card-header">
+            Interface #${interfaceCount}
+            <button type="button" class="btn btn-sm btn-danger float-right delete-interface">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Interface Name</label>
+              <input type="text" class="form-control interface-name" placeholder="e.g. GigabitEthernet0/1">
+            </div>
+            <div class="form-group">
+              <label>IP Address</label>
+              <input type="text" class="form-control interface-ip" placeholder="e.g. 192.168.1.1">
+            </div>
+            <div class="form-group">
+              <label>Subnet Mask</label>
+              <input type="text" class="form-control interface-mask" placeholder="e.g. 255.255.255.0">
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" class="form-control interface-desc" placeholder="e.g. LAN Interface">
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input interface-enabled" checked>
+              <label class="form-check-label">Enable Interface</label>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      $('#interfacesList').append(newInterface);
+    });
+    
+    // Delete Interface button click
+    $(document).on('click', '.delete-interface', function() {
+      $(this).closest('.card').remove();
+      // Update interface numbers
+      $('#interfacesList .card-header').each(function(index) {
+        $(this).html(`
+          Interface #${index + 1}
+          <button type="button" class="btn btn-sm btn-danger float-right delete-interface">
+            <i class="fas fa-times"></i>
+          </button>
+        `);
+      });
+    });
+    
+    // Add Route button click
+    $('#addRouteBtn').click(function() {
+      const routeCount = $('#staticRoutesList .card').length + 1;
+      const newRoute = `
+        <div class="card mb-3">
+          <div class="card-header">
+            Static Route #${routeCount}
+            <button type="button" class="btn btn-sm btn-danger float-right delete-route">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Network</label>
+              <input type="text" class="form-control route-network" placeholder="e.g. 10.0.0.0">
+            </div>
+            <div class="form-group">
+              <label>Subnet Mask</label>
+              <input type="text" class="form-control route-mask" placeholder="e.g. 255.0.0.0">
+            </div>
+            <div class="form-group">
+              <label>Next Hop</label>
+              <input type="text" class="form-control route-next-hop" placeholder="e.g. 192.168.1.254">
+            </div>
+            <div class="form-group">
+              <label>Administrative Distance</label>
+              <input type="number" class="form-control route-distance" value="1">
+            </div>
+          </div>
+        </div>
+      `;
+      
+      $('#staticRoutesList').append(newRoute);
+    });
+    
+    // Delete Route button click
+    $(document).on('click', '.delete-route', function() {
+      $(this).closest('.card').remove();
+      // Update route numbers
+      $('#staticRoutesList .card-header').each(function(index) {
+        $(this).html(`
+          Static Route #${index + 1}
+          <button type="button" class="btn btn-sm btn-danger float-right delete-route">
+            <i class="fas fa-times"></i>
+          </button>
+        `);
+      });
+    });
+    
+    // Add ACL button click
+    $('#addAclBtn').click(function() {
+      const aclCount = $('#aclList .card').length + 1;
+      const newAcl = `
+        <div class="card mb-3">
+          <div class="card-header">
+            ACL #${aclCount}
+            <button type="button" class="btn btn-sm btn-danger float-right delete-acl">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>ACL Name/Number</label>
+              <input type="text" class="form-control acl-name" placeholder="e.g. 100 or BLOCK_SSH">
+            </div>
+            <div class="form-group">
+              <label>ACL Type</label>
+              <select class="form-control acl-type">
+                <option value="standard">Standard</option>
+                <option value="extended">Extended</option>
+                <option value="named">Named</option>
+              </select>
+            </div>
+            <div class="acl-entries">
+              <div class="card mb-2">
+                <div class="card-body">
+                  <div class="form-group">
+                    <label>Action</label>
+                    <select class="form-control acl-action">
+                      <option value="permit">Permit</option>
+                      <option value="deny">Deny</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Source</label>
+                    <input type="text" class="form-control acl-source" placeholder="e.g. any or 10.0.0.0 0.255.255.255">
+                  </div>
+                  <div class="form-group acl-ext-only">
+                    <label>Destination</label>
+                    <input type="text" class="form-control acl-destination" placeholder="e.g. any or 192.168.1.0 0.0.0.255">
+                  </div>
+                  <div class="form-group acl-ext-only">
+                    <label>Protocol</label>
+                    <select class="form-control acl-protocol">
+                      <option value="ip">IP</option>
+                      <option value="tcp">TCP</option>
+                      <option value="udp">UDP</option>
+                      <option value="icmp">ICMP</option>
+                    </select>
+                  </div>
+                  <div class="form-row acl-ext-only">
+                    <div class="col">
+                      <label>Source Port</label>
+                      <input type="text" class="form-control acl-source-port" placeholder="e.g. eq 80">
+                    </div>
+                    <div class="col">
+                      <label>Destination Port</label>
+                      <input type="text" class="form-control acl-dest-port" placeholder="e.g. eq 22">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-info add-acl-entry">
+              <i class="fas fa-plus"></i> Add ACL Entry
+            </button>
+          </div>
+        </div>
+      `;
+      
+      $('#aclList').append(newAcl);
+    });
+    
+    // Delete ACL button click
+    $(document).on('click', '.delete-acl', function() {
+      $(this).closest('.card').remove();
+      // Update ACL numbers
+      $('#aclList > .card > .card-header').each(function(index) {
+        $(this).html(`
+          ACL #${index + 1}
+          <button type="button" class="btn btn-sm btn-danger float-right delete-acl">
+            <i class="fas fa-times"></i>
+          </button>
+        `);
+      });
+    });
+    
+    // Add ACL Entry button click
+    $(document).on('click', '.add-acl-entry', function() {
+      const newEntry = `
+        <div class="card mb-2">
+          <div class="card-body">
+            <button type="button" class="btn btn-sm btn-danger float-right delete-acl-entry">
+              <i class="fas fa-times"></i>
+            </button>
+            <div class="form-group">
+              <label>Action</label>
+              <select class="form-control acl-action">
+                <option value="permit">Permit</option>
+                <option value="deny">Deny</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Source</label>
+              <input type="text" class="form-control acl-source" placeholder="e.g. any or 10.0.0.0 0.255.255.255">
+            </div>
+            <div class="form-group acl-ext-only">
+              <label>Destination</label>
+              <input type="text" class="form-control acl-destination" placeholder="e.g. any or 192.168.1.0 0.0.0.255">
+            </div>
+            <div class="form-group acl-ext-only">
+              <label>Protocol</label>
+              <select class="form-control acl-protocol">
+                <option value="ip">IP</option>
+                <option value="tcp">TCP</option>
+                <option value="udp">UDP</option>
+                <option value="icmp">ICMP</option>
+              </select>
+            </div>
+            <div class="form-row acl-ext-only">
+              <div class="col">
+                <label>Source Port</label>
+                <input type="text" class="form-control acl-source-port" placeholder="e.g. eq 80">
+              </div>
+              <div class="col">
+                <label>Destination Port</label>
+                <input type="text" class="form-control acl-dest-port" placeholder="e.g. eq 22">
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      $(this).prev('.acl-entries').append(newEntry);
+    });
+    
+    // Delete ACL Entry button click
+    $(document).on('click', '.delete-acl-entry', function() {
+      $(this).closest('.card').remove();
+    });
+    
+    // Toggle SNMP config visibility
+    $('#enableSNMP').change(function() {
+      if ($(this).is(':checked')) {
+        $('#snmpConfig').show();
+      } else {
+        $('#snmpConfig').hide();
+      }
+    });
+    
+    // Toggle NTP config visibility
+    $('#enableNTP').change(function() {
+      if ($(this).is(':checked')) {
+        $('#ntpConfig').show();
+      } else {
+        $('#ntpConfig').hide();
+      }
+    });
+    
+    // Toggle Syslog config visibility
+    $('#enableSyslog').change(function() {
+      if ($(this).is(':checked')) {
+        $('#syslogConfig').show();
+      } else {
+        $('#syslogConfig').hide();
+      }
+    });
+    
+    // Routing protocol change
+    $('#routingProtocol').change(function() {
+      const protocol = $(this).val();
+      
+      // Hide all protocol specific configs
+      $('#ospfConfig').hide();
+      
+      // Show specific protocol config
+      if (protocol === 'ospf') {
+        $('#ospfConfig').show();
+      }
+    });
+    
+    // Add OSPF Network button click
+    $('#addOspfNetworkBtn').click(function() {
+      const networkCount = $('#ospfNetworksList .card').length + 1;
+      const newNetwork = `
+        <div class="card mb-3">
+          <div class="card-header">
+            OSPF Network #${networkCount}
+            <button type="button" class="btn btn-sm btn-danger float-right delete-ospf-network">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Network</label>
+              <input type="text" class="form-control ospf-network" placeholder="e.g. 192.168.1.0">
+            </div>
+            <div class="form-group">
+              <label>Wildcard Mask</label>
+              <input type="text" class="form-control ospf-wildcard" placeholder="e.g. 0.0.0.255">
+            </div>
+            <div class="form-group">
+              <label>Area</label>
+              <input type="text" class="form-control ospf-area" value="0">
+            </div>
+          </div>
+        </div>
+      `;
+      
+      $('#ospfNetworksList').append(newNetwork);
+    });
+    
+    // Delete OSPF Network button click
+    $(document).on('click', '.delete-ospf-network', function() {
+      $(this).closest('.card').remove();
+      // Update network numbers
+      $('#ospfNetworksList .card-header').each(function(index) {
+        $(this).html(`
+          OSPF Network #${index + 1}
+          <button type="button" class="btn btn-sm btn-danger float-right delete-ospf-network">
+            <i class="fas fa-times"></i>
+          </button>
+        `);
+      });
+    });
+    
+    // Function to update the analysis tab with results
+    function updateAnalysisTab(data) {
+      // Update security score
+      const score = data.security_score || 0;
+      $('#securityScore').text(score);
+      
+      // Update score container class
+      const scoreContainer = $('#securityScoreContainer');
+      scoreContainer.removeClass('score-high score-medium score-low');
+      if (score >= 80) {
+        scoreContainer.addClass('score-high');
+        $('#complianceStatus').text('Pass').removeClass('text-danger text-warning').addClass('text-success');
+      } else if (score >= 50) {
+        scoreContainer.addClass('score-medium');
+        $('#complianceStatus').text('Warning').removeClass('text-danger text-success').addClass('text-warning');
+      } else {
+        scoreContainer.addClass('score-low');
+        $('#complianceStatus').text('Fail').removeClass('text-warning text-success').addClass('text-danger');
+      }
+      
+      // Update issues found
+      $('#issuesFound').text(data.issues_found || 0);
+      
+      // Update recommendations
+      const recommendationsList = $('#recommendationsList');
+      recommendationsList.empty();
+      
+      const recommendations = data.recommendations || [];
+      if (recommendations.length > 0) {
+        recommendations.forEach(function(rec) {
+          const severityClass = rec.severity === 'critical' ? 'critical' : 
+                                rec.severity === 'important' ? 'important' : 
+                                rec.severity === 'good' ? 'good' : '';
+          
+          recommendationsList.append(`
+            <div class="recommendation-item ${severityClass}">
+              <h6>${rec.title}</h6>
+              <p>${rec.description}</p>
+              ${rec.solution ? `<p><strong>Solution:</strong> ${rec.solution}</p>` : ''}
+            </div>
+          `);
+        });
+      } else {
+        recommendationsList.html('<p>No recommendations available.</p>');
+      }
+      
+      // Update ML analysis
+      const mlAnalysis = $('#mlAnalysis');
+      mlAnalysis.empty();
+      
+      const mlData = data.ml_analysis || {};
+      if (Object.keys(mlData).length > 0) {
+        // Similar configs
+        if (mlData.similar_configs && mlData.similar_configs.length > 0) {
+          const similarList = $('<div class="mb-4"></div>');
+          similarList.append('<h6>Similar Configuration Patterns</h6>');
+          similarList.append('<ul class="list-group"></ul>');
+          
+          mlData.similar_configs.forEach(function(config) {
+            similarList.find('ul').append(`
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                ${config.name || 'Unnamed configuration'}
+                <span class="badge badge-primary badge-pill">${Math.round(config.similarity * 100)}% Match</span>
+              </li>
+            `);
+          });
+          
+          mlAnalysis.append(similarList);
+        }
+        
+        // Features analysis
+        if (mlData.feature_analysis) {
+          const featureSection = $('<div class="mb-4"></div>');
+          featureSection.append('<h6>Configuration Features Analysis</h6>');
+          
+          const featureList = $('<ul class="list-group"></ul>');
+          Object.entries(mlData.feature_analysis).forEach(function([feature, present]) {
+            featureList.append(`
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                ${formatFeatureName(feature)}
+                <span class="badge badge-${present ? 'success' : 'danger'} badge-pill">
+                  ${present ? 'Present' : 'Missing'}
+                </span>
+              </li>
+            `);
+          });
+          
+          featureSection.append(featureList);
+          mlAnalysis.append(featureSection);
+        }
+        
+        // Summary
+        if (mlData.summary) {
+          mlAnalysis.append(`
+            <div class="mt-3">
+              <h6>AI Summary</h6>
+              <p>${mlData.summary}</p>
+            </div>
+          `);
+        }
+      } else {
+        mlAnalysis.html('<p>No machine learning analysis available.</p>');
+      }
+    }
+    
+    // Function to collect form data based on current section
+    function collectFormData() {
+      const data = {
+        device_type: currentDeviceType
+      };
+      
+      // Basic settings
+      if ($('#basic-form').is(':visible') || currentSection === 'basic') {
+        data.basic = {
+          hostname: $('#hostname').val(),
+          domain: $('#domain').val(),
+          enable_password: $('#enablePassword').val(),
+          enable_ssh: $('#enableSSH').is(':checked'),
+          disable_telnet: $('#disableTelnet').is(':checked')
+        };
+      }
+      
+      // Interfaces
+      if ($('#interfaces-form').is(':visible') || currentSection === 'interfaces') {
+        data.interfaces = [];
+        
+        $('#interfacesList .card').each(function() {
+          const card = $(this);
+          data.interfaces.push({
+            name: card.find('.interface-name').val(),
+            ip_address: card.find('.interface-ip').val(),
+            subnet_mask: card.find('.interface-mask').val(),
+            description: card.find('.interface-desc').val(),
+            enabled: card.find('.interface-enabled').is(':checked')
+          });
+        });
+      }
+      
+      // Routing
+      if ($('#routing-form').is(':visible') || currentSection === 'routing') {
+        data.routing = {
+          protocol: $('#routingProtocol').val(),
+          static_routes: [],
+          ospf: null
+        };
+        
+        // Static routes
+        $('#staticRoutesList .card').each(function() {
+          const card = $(this);
+          data.routing.static_routes.push({
+            network: card.find('.route-network').val(),
+            mask: card.find('.route-mask').val(),
+            next_hop: card.find('.route-next-hop').val(),
+            distance: card.find('.route-distance').val()
+          });
+        });
+        
+        // OSPF if enabled
+        if (data.routing.protocol === 'ospf') {
+          data.routing.ospf = {
+            process_id: $('#ospfProcessId').val(),
+            router_id: $('#ospfRouterId').val(),
+            networks: []
+          };
+          
+          $('#ospfNetworksList .card').each(function() {
+            const card = $(this);
+            data.routing.ospf.networks.push({
+              network: card.find('.ospf-network').val(),
+              wildcard: card.find('.ospf-wildcard').val(),
+              area: card.find('.ospf-area').val()
+            });
+          });
+        }
+      }
+      
+      // Security
+      if ($('#security-form').is(':visible') || currentSection === 'security') {
+        data.security = {
+          enable_aaa: $('#enableAAA').is(':checked'),
+          enable_password_encryption: $('#enablePasswordEncryption').is(':checked'),
+          acls: []
+        };
+        
+        // ACLs
+        $('#aclList > .card').each(function() {
+          const card = $(this);
+          const acl = {
+            name: card.find('.acl-name').val(),
+            type: card.find('.acl-type').val(),
+            entries: []
+          };
+          
+          card.find('.acl-entries .card').each(function() {
+            const entryCard = $(this);
+            const entry = {
+              action: entryCard.find('.acl-action').val(),
+              source: entryCard.find('.acl-source').val()
+            };
+            
+            if (acl.type === 'extended' || acl.type === 'named') {
+              entry.destination = entryCard.find('.acl-destination').val();
+              entry.protocol = entryCard.find('.acl-protocol').val();
+              entry.source_port = entryCard.find('.acl-source-port').val();
+              entry.destination_port = entryCard.find('.acl-dest-port').val();
+            }
+            
+            acl.entries.push(entry);
+          });
+          
+          data.security.acls.push(acl);
+        });
+      }
+      
+      // Management
+      if ($('#management-form').is(':visible') || currentSection === 'management') {
+        data.management = {
+          enable_snmp: $('#enableSNMP').is(':checked'),
+          enable_ntp: $('#enableNTP').is(':checked'),
+          enable_syslog: $('#enableSyslog').is(':checked')
+        };
+        
+        if (data.management.enable_snmp) {
+          data.management.snmp = {
+            community: $('#snmpCommunity').val(),
+            location: $('#snmpLocation').val(),
+            contact: $('#snmpContact').val()
+          };
+        }
+        
+        if (data.management.enable_ntp) {
+          data.management.ntp = {
+            server: $('#ntpServer').val()
+          };
+        }
+        
+        if (data.management.enable_syslog) {
+          data.management.syslog = {
+            server: $('#syslogServer').val(),
+            level: $('#loggingLevel').val()
+          };
+        }
+      }
+      
+      return data;
+    }
+    
+    // Helper function to format feature names
+    function formatFeatureName(feature) {
+      return feature
+        .replace(/_/g, ' ')
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, function(str) { return str.toUpperCase(); });
+    }
+    
+    // Helper function to capitalize first letter
+    function capitalizeFirstLetter(string) {
+      return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+    
+    // Initialize ACL type change handlers
+    $(document).on('change', '.acl-type', function() {
+      const type = $(this).val();
+      const card = $(this).closest('.card');
+      
+      if (type === 'standard') {
+        card.find('.acl-ext-only').hide();
+      } else {
+        card.find('.acl-ext-only').show();
+      }
+    });
+    
+    // Initialize tooltips
+    $('[data-toggle="tooltip"]').tooltip();
+  });
+</script>
+{% endblock %}

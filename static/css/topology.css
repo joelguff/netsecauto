@@ -1,0 +1,110 @@
+/* Network Topology CSS */
+
+.topology-container {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: #1e2124;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.topology-canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.topology-legend {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 4px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-size: 0.8rem;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-up {
+    background-color: #198754;
+}
+
+.status-degraded {
+    background-color: #fd7e14;
+}
+
+.status-down {
+    background-color: #dc3545;
+}
+
+/* D3.js Node Styles */
+.node {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.node text {
+    font-size: 12px;
+    fill: white;
+    text-anchor: middle;
+}
+
+.node circle {
+    stroke: white;
+    stroke-width: 2px;
+}
+
+.node:hover circle {
+    stroke: #0dcaf0;
+    stroke-width: 3px;
+}
+
+.node.active circle {
+    stroke: #0dcaf0;
+    stroke-width: 3px;
+}
+
+/* D3.js Link Styles */
+.link {
+    stroke-width: 2px;
+    cursor: pointer;
+    transition: stroke-width 0.2s ease;
+}
+
+.link:hover {
+    stroke-width: 4px;
+}
+
+.link.active {
+    stroke-width: 4px;
+}
+
+/* Connection status colors */
+.connection-active {
+    stroke: #0dcaf0;
+}
+
+.connection-degraded {
+    stroke: #fd7e14;
+}
+
+.connection-down {
+    stroke: #dc3545;
+}

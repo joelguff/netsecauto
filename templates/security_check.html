@@ -1,0 +1,309 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>
+            {% if view_mode %}
+            <i class="fas fa-clipboard-check"></i> Security Audit Results: {{ device.name }}
+            {% else %}
+            <i class="fas fa-shield-alt"></i> Security Audit: {{ device.name }}
+            {% endif %}
+        </h1>
+    </div>
+    <div class="col-md-auto">
+        <a href="{{ url_for('device_detail', device_id=device.id) }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Device
+        </a>
+    </div>
+</div>
+
+{% if view_mode and audit %}
+<!-- Audit Results View -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie"></i> Security Score: 
+                    <span class="badge {% if audit.score >= 80 %}bg-success{% elif audit.score >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                        {{ audit.score | round(1) }}%
+                    </span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="alert {% if audit.score >= 80 %}alert-success{% elif audit.score >= 60 %}alert-warning{% else %}alert-danger{% endif %} mb-0">
+                            <h4 class="alert-heading">
+                                {% if audit.score >= 80 %}
+                                <i class="fas fa-check-circle"></i> Good Security Posture
+                                {% elif audit.score >= 60 %}
+                                <i class="fas fa-exclamation-triangle"></i> Security Improvements Needed
+                                {% else %}
+                                <i class="fas fa-times-circle"></i> Critical Security Issues
+                                {% endif %}
+                            </h4>
+                            <p>
+                                Device passed {{ audit.passed_checks }} out of {{ audit.total_checks }} security checks
+                                <br>
+                                Audit performed on: {{ audit.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="progress" style="height: 30px;">
+                            {% if audit.score >= 80 %}
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ audit.score }}%;" aria-valuenow="{{ audit.score }}" aria-valuemin="0" aria-valuemax="100">{{ audit.score | round(1) }}%</div>
+                            {% elif audit.score >= 60 %}
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ audit.score }}%;" aria-valuenow="{{ audit.score }}" aria-valuemin="0" aria-valuemax="100">{{ audit.score | round(1) }}%</div>
+                            {% else %}
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ audit.score }}%;" aria-valuenow="{{ audit.score }}" aria-valuemin="0" aria-valuemax="100">{{ audit.score | round(1) }}%</div>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <span>Critical (0-60%)</span>
+                            <span>Warning (60-80%)</span>
+                            <span>Good (80-100%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Results -->
+                <div class="accordion" id="auditAccordion">
+                    <!-- Password Policy Section -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="passwordHeading">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#passwordCollapse" aria-expanded="true" aria-controls="passwordCollapse">
+                                <i class="fas fa-key me-2"></i> Password Policy
+                            </button>
+                        </h2>
+                        <div id="passwordCollapse" class="accordion-collapse collapse show" aria-labelledby="passwordHeading" data-bs-parent="#auditAccordion">
+                            <div class="accordion-body">
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Password Policies
+                                        {% if results and results.password_policies %}
+                                          {% if results.password_policies.status == "pass" %}
+                                          <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i></span>
+                                          {% elif results.password_policies.status == "warning" %}
+                                          <span class="badge bg-warning rounded-pill"><i class="fas fa-exclamation-triangle"></i></span>
+                                          {% else %}
+                                          <span class="badge bg-danger rounded-pill"><i class="fas fa-times"></i></span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="badge bg-secondary rounded-pill"><i class="fas fa-question"></i></span>
+                                        {% endif %}
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Authentication Methods
+                                        {% if results and results.authentication %}
+                                          {% if results.authentication.status == "pass" %}
+                                          <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i></span>
+                                          {% elif results.authentication.status == "warning" %}
+                                          <span class="badge bg-warning rounded-pill"><i class="fas fa-exclamation-triangle"></i></span>
+                                          {% else %}
+                                          <span class="badge bg-danger rounded-pill"><i class="fas fa-times"></i></span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="badge bg-secondary rounded-pill"><i class="fas fa-question"></i></span>
+                                        {% endif %}
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Encryption Configuration
+                                        {% if results and results.encryption %}
+                                          {% if results.encryption.status == "pass" %}
+                                          <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i></span>
+                                          {% elif results.encryption.status == "warning" %}
+                                          <span class="badge bg-warning rounded-pill"><i class="fas fa-exclamation-triangle"></i></span>
+                                          {% else %}
+                                          <span class="badge bg-danger rounded-pill"><i class="fas fa-times"></i></span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="badge bg-secondary rounded-pill"><i class="fas fa-question"></i></span>
+                                        {% endif %}
+                                    </li>
+                                </ul>
+                                
+                                <div class="alert alert-info mt-3">
+                                    <h5><i class="fas fa-info-circle"></i> Recommendation</h5>
+                                    <p>Strong password policies are essential for network security. Ensure passwords are:</p>
+                                    <ul>
+                                        <li>At least 8 characters long</li>
+                                        <li>Include a mix of uppercase, lowercase, numbers, and special characters</li>
+                                        <li>Stored with encryption enabled</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Access Controls Section -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="accessHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#accessCollapse" aria-expanded="false" aria-controls="accessCollapse">
+                                <i class="fas fa-lock me-2"></i> Access Controls
+                            </button>
+                        </h2>
+                        <div id="accessCollapse" class="accordion-collapse collapse" aria-labelledby="accessHeading" data-bs-parent="#auditAccordion">
+                            <div class="accordion-body">
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Access Control Lists
+                                        {% if results and results.access_controls %}
+                                          {% if results.access_controls.status == "pass" %}
+                                          <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i></span>
+                                          {% elif results.access_controls.status == "warning" %}
+                                          <span class="badge bg-warning rounded-pill"><i class="fas fa-exclamation-triangle"></i></span>
+                                          {% else %}
+                                          <span class="badge bg-danger rounded-pill"><i class="fas fa-times"></i></span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="badge bg-secondary rounded-pill"><i class="fas fa-question"></i></span>
+                                        {% endif %}
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Remote Access Methods
+                                        {% if results and results.authentication %}
+                                          {% if results.authentication.status == "pass" %}
+                                          <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i></span>
+                                          {% elif results.authentication.status == "warning" %}
+                                          <span class="badge bg-warning rounded-pill"><i class="fas fa-exclamation-triangle"></i></span>
+                                          {% else %}
+                                          <span class="badge bg-danger rounded-pill"><i class="fas fa-times"></i></span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="badge bg-secondary rounded-pill"><i class="fas fa-question"></i></span>
+                                        {% endif %}
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Management Interface Security
+                                        {% if results and results.access_controls %}
+                                          {% if results.access_controls.status == "pass" %}
+                                          <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i></span>
+                                          {% elif results.access_controls.status == "warning" %}
+                                          <span class="badge bg-warning rounded-pill"><i class="fas fa-exclamation-triangle"></i></span>
+                                          {% else %}
+                                          <span class="badge bg-danger rounded-pill"><i class="fas fa-times"></i></span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="badge bg-secondary rounded-pill"><i class="fas fa-question"></i></span>
+                                        {% endif %}
+                                    </li>
+                                </ul>
+                                
+                                <div class="alert alert-info mt-3">
+                                    <h5><i class="fas fa-info-circle"></i> Recommendation</h5>
+                                    <p>Secure access controls protect your device from unauthorized access:</p>
+                                    <ul>
+                                        <li>Use SSH instead of Telnet for encrypted communication</li>
+                                        <li>Explicitly disable Telnet on all devices</li>
+                                        <li>Apply access control lists to limit management access to trusted IP addresses</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Services Section -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="servicesHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#servicesCollapse" aria-expanded="false" aria-controls="servicesCollapse">
+                                <i class="fas fa-cogs me-2"></i> Services
+                            </button>
+                        </h2>
+                        <div id="servicesCollapse" class="accordion-collapse collapse" aria-labelledby="servicesHeading" data-bs-parent="#auditAccordion">
+                            <div class="accordion-body">
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Network Discovery Protocols
+                                        {% if results and results.authentication %}
+                                          {% if results.authentication.status == "pass" %}
+                                          <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i></span>
+                                          {% elif results.authentication.status == "warning" %}
+                                          <span class="badge bg-warning rounded-pill"><i class="fas fa-exclamation-triangle"></i></span>
+                                          {% else %}
+                                          <span class="badge bg-danger rounded-pill"><i class="fas fa-times"></i></span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="badge bg-secondary rounded-pill"><i class="fas fa-question"></i></span>
+                                        {% endif %}
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Web Management Security
+                                        {% if results and results.encryption %}
+                                          {% if results.encryption.status == "pass" %}
+                                          <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i></span>
+                                          {% elif results.encryption.status == "warning" %}
+                                          <span class="badge bg-warning rounded-pill"><i class="fas fa-exclamation-triangle"></i></span>
+                                          {% else %}
+                                          <span class="badge bg-danger rounded-pill"><i class="fas fa-times"></i></span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="badge bg-secondary rounded-pill"><i class="fas fa-question"></i></span>
+                                        {% endif %}
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Management Protocol Security
+                                        {% if results and results.access_controls %}
+                                          {% if results.access_controls.status == "pass" %}
+                                          <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i></span>
+                                          {% elif results.access_controls.status == "warning" %}
+                                          <span class="badge bg-warning rounded-pill"><i class="fas fa-exclamation-triangle"></i></span>
+                                          {% else %}
+                                          <span class="badge bg-danger rounded-pill"><i class="fas fa-times"></i></span>
+                                          {% endif %}
+                                        {% else %}
+                                          <span class="badge bg-secondary rounded-pill"><i class="fas fa-question"></i></span>
+                                        {% endif %}
+                                    </li>
+                                </ul>
+                                
+                                <div class="alert alert-info mt-3">
+                                    <h5><i class="fas fa-info-circle"></i> Recommendation</h5>
+                                    <p>Unnecessary services increase attack surface and should be disabled:</p>
+                                    <ul>
+                                        <li>Disable CDP/LLDP on external interfaces to prevent information disclosure</li>
+                                        <li>Disable HTTP server unless absolutely needed, use HTTPS if web access is required</li>
+                                        <li>Use SNMPv3 with authentication and encryption, avoid public/private community strings</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Run Security Audit Form -->
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Run Security Audit</h5>
+    </div>
+    <div class="card-body">
+        <p>Running a security audit will connect to the device and check for common security misconfigurations and best practices.</p>
+        
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> The security audit will check:
+            <ul>
+                <li>Password policies and encryption</li>
+                <li>Access control configurations (SSH, Telnet, ACLs)</li>
+                <li>Unnecessary and potentially vulnerable services</li>
+            </ul>
+        </div>
+        
+        <form method="POST" action="{{ url_for('security_audit', device_id=device.id) }}">
+            <p class="text-center">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-play"></i> Start Security Audit
+                </button>
+            </p>
+            <div class="text-muted text-center">This process may take up to a minute to complete</div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

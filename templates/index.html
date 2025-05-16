@@ -1,0 +1,208 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <!-- Device Count -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-network-wired fa-3x"></i>
+                    </div>
+                    <div>
+                        <h2 class="mb-0">{{ device_count }}</h2>
+                        <div>Managed Devices</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <span>Network Devices</span>
+                <a href="{{ url_for('devices') }}" class="btn btn-outline-light btn-sm">View All</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Last Audit -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-clipboard-check fa-3x"></i>
+                    </div>
+                    <div>
+                        {% if last_audit %}
+                        <h2 class="mb-0">{{ last_audit.score | round(1) }}%</h2>
+                        <div>Last Security Score</div>
+                        {% else %}
+                        <h2 class="mb-0">N/A</h2>
+                        <div>No Audits Performed</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <span>Security Audits</span>
+                {% if last_audit %}
+                <a href="{{ url_for('view_audit', audit_id=last_audit.id) }}" class="btn btn-outline-light btn-sm">View Last</a>
+                {% else %}
+                <span class="small">No recent audits</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Last Backup -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-save fa-3x"></i>
+                    </div>
+                    <div>
+                        <h2 class="mb-0">{{ backup_count }}</h2>
+                        <div>Configuration Backups</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <span>Device Backups</span>
+                {% if last_backup %}
+                <a href="{{ url_for('view_backup', backup_id=last_backup.id) }}" class="btn btn-outline-light btn-sm">View Last</a>
+                {% else %}
+                <span class="small">No recent backups</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-clipboard-list"></i> Recent Security Audits</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Date</th>
+                                <th>Score</th>
+                                <th>Passed Checks</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recent_audits %}
+                                {% for audit in recent_audits %}
+                                <tr>
+                                    <td>{{ audit.device.name }}</td>
+                                    <td>{{ audit.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            {% if audit.score >= 80 %}
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ audit.score }}%;" aria-valuenow="{{ audit.score }}" aria-valuemin="0" aria-valuemax="100">{{ audit.score | round(1) }}%</div>
+                                            {% elif audit.score >= 60 %}
+                                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ audit.score }}%;" aria-valuenow="{{ audit.score }}" aria-valuemin="0" aria-valuemax="100">{{ audit.score | round(1) }}%</div>
+                                            {% else %}
+                                            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ audit.score }}%;" aria-valuenow="{{ audit.score }}" aria-valuemin="0" aria-valuemax="100">{{ audit.score | round(1) }}%</div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>{{ audit.passed_checks }}/{{ audit.total_checks }}</td>
+                                    <td>
+                                        <a href="{{ url_for('view_audit', audit_id=audit.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No security audits have been performed yet</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Links -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-around">
+                    <a href="{{ url_for('devices') }}" class="btn btn-lg btn-outline-primary m-2">
+                        <i class="fas fa-network-wired fa-2x mb-2"></i><br>
+                        Manage Devices
+                    </a>
+                    <a href="{{ url_for('devices') }}" class="btn btn-lg btn-outline-success m-2">
+                        <i class="fas fa-save fa-2x mb-2"></i><br>
+                        Backup Configurations
+                    </a>
+                    <a href="{{ url_for('devices') }}" class="btn btn-lg btn-outline-info m-2">
+                        <i class="fas fa-shield-alt fa-2x mb-2"></i><br>
+                        Security Audits
+                    </a>
+                    <a href="{{ url_for('compare_configs') }}" class="btn btn-lg btn-outline-warning m-2">
+                        <i class="fas fa-code-branch fa-2x mb-2"></i><br>
+                        Compare Configs
+                    </a>
+                    <a href="{{ url_for('device_monitoring') }}" class="btn btn-lg btn-outline-primary m-2">
+                        <i class="fas fa-chart-line fa-2x mb-2"></i><br>
+                        Real-Time Monitoring
+                    </a>
+                    <a href="{{ url_for('topology') }}" class="btn btn-lg btn-outline-secondary m-2">
+                        <i class="fas fa-project-diagram fa-2x mb-2"></i><br>
+                        Network Topology
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Instructions -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Getting Started</h5>
+            </div>
+            <div class="card-body">
+                <p>Demonstration of my Network Security Automation Tool. Follow these steps to get started:</p>
+                <ol>
+                    <li>Add your network devices in the <a href="{{ url_for('devices') }}">Devices</a> section</li>
+                    <li>Run security audits to identify potential vulnerabilities</li>
+                    <li>Back up your device configurations regularly</li>
+                    <li>Use the CLI tool for more advanced operations</li>
+                </ol>
+                <div class="alert alert-info">
+                    <strong>CLI Tool:</strong> This web interface is complemented by a command-line tool. Run <code>python netsec_cli.py --help</code> in your terminal for more information.
+                </div>
+                <p class="text-muted mt-3">My linkedin: <a href="https://www.linkedin.com/in/joelgff/" target="_blank"><i class="fab fa-linkedin"></i> Joel Aaron Guff</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

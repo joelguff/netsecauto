@@ -1,0 +1,1017 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="fas fa-project-diagram"></i> Network Topology</h1>
+        <p class="lead">Interactive visualisation of your network devices and connections</p>
+    </div>
+    <div class="col-md-auto">
+        <div class="btn-group" role="group" aria-label="Actions">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <button id="addConnectionBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#connectionModal">
+                <i class="fas fa-plug"></i> Add Connection
+            </button>
+            <button id="testModeBtn" class="btn btn-danger">
+                <i class="fas fa-vial"></i> <span id="testModeText">Enable Test Mode</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Test Mode Alert -->
+<div id="testModeAlert" class="alert alert-danger mb-4" style="display: none;">
+    <div class="d-flex align-items-center">
+        <div class="flex-shrink-0">
+            <i class="fas fa-flask fa-2x me-3"></i>
+        </div>
+        <div class="flex-grow-1">
+            <h4 class="alert-heading">Test Mode Active</h4>
+            <p class="mb-0">Test mode is enabled. All data shown is simulated for demonstration purposes.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Network Topology Visualization -->
+<div class="card mb-4">
+    <div class="card-header bg-dark">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-project-diagram"></i> Network Map</h5>
+            <div class="btn-group">
+                <button id="layoutCircleBtn" class="btn btn-sm btn-outline-light">
+                    <i class="fas fa-circle-notch"></i> Circle
+                </button>
+                <button id="layoutGridBtn" class="btn btn-sm btn-outline-light">
+                    <i class="fas fa-th"></i> Grid
+                </button>
+                <button id="layoutForceBtn" class="btn btn-sm btn-outline-light active">
+                    <i class="fas fa-atom"></i> Force-Directed
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="topologyContainer" class="topology-container">
+            <div id="topology" class="topology-canvas"></div>
+            <div class="topology-legend">
+                <div class="legend-item">
+                    <span class="status-indicator status-up"></span> Active
+                </div>
+                <div class="legend-item">
+                    <span class="status-indicator status-degraded"></span> Degraded
+                </div>
+                <div class="legend-item">
+                    <span class="status-indicator status-down"></span> Down
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Connection Information Card -->
+<div class="card mb-4" id="connectionInfoCard" style="display: none;">
+    <div class="card-header bg-dark">
+        <h5 class="mb-0"><i class="fas fa-info-circle"></i> Connection Details</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Source Device</h6>
+                <div id="sourceDeviceInfo"></div>
+            </div>
+            <div class="col-md-6">
+                <h6>Target Device</h6>
+                <div id="targetDeviceInfo"></div>
+            </div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-md-4">
+                <p><strong>Type:</strong> <span id="connectionType"></span></p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Status:</strong> <span id="connectionStatus"></span></p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Bandwidth:</strong> <span id="connectionBandwidth"></span></p>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-6">
+                <p><strong>Source Interface:</strong> <span id="connectionSourceInterface"></span></p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Target Interface:</strong> <span id="connectionTargetInterface"></span></p>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col">
+                <p><strong>Description:</strong> <span id="connectionDescription"></span></p>
+            </div>
+        </div>
+        <div class="d-flex justify-content-end mt-3">
+            <button class="btn btn-danger btn-sm me-2" id="deleteConnectionBtn">
+                <i class="fas fa-trash"></i> Delete Connection
+            </button>
+            <button class="btn btn-warning btn-sm" id="editConnectionBtn" data-bs-toggle="modal" data-bs-target="#connectionModal">
+                <i class="fas fa-edit"></i> Edit Connection
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Device List Card -->
+<div class="card">
+    <div class="card-header bg-dark">
+        <h5 class="mb-0"><i class="fas fa-server"></i> Devices</h5>
+    </div>
+    <div class="card-body">
+        {% if devices %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>IP Address</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Connections</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                    <tr>
+                        <td>{{ device.name }}</td>
+                        <td>{{ device.ip_address }}</td>
+                        <td>{{ device.device_type }}</td>
+                        <td>
+                            {% if device.id in ping_data and ping_data[device.id].status %}
+                                {% if ping_data[device.id].status == 'up' %}
+                                <span class="badge bg-success">Up</span>
+                                {% elif ping_data[device.id].status == 'degraded' %}
+                                <span class="badge bg-warning">Degraded</span>
+                                {% else %}
+                                <span class="badge bg-danger">Down</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-secondary">Unknown</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span id="device-connections-{{ device.id }}" class="badge bg-info">
+                                {{ device.outgoing_connections|length + device.incoming_connections|length }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('device_detail', device_id=device.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <i class="fas fa-server fa-3x mb-3 text-muted"></i>
+            <p>No devices have been added yet.</p>
+            <a href="{{ url_for('add_device') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add Device
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Connection Modal -->
+<div class="modal fade" id="connectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="connectionModalTitle">Add Connection</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="connectionForm">
+                    <input type="hidden" id="connectionId" name="connection_id" value="">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="sourceDevice" class="form-label">Source Device</label>
+                            <select class="form-select" id="sourceDevice" name="source_device_id" required>
+                                <option value="">Select Source Device</option>
+                                {% for device in devices %}
+                                <option value="{{ device.id }}">{{ device.name }} ({{ device.ip_address }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="targetDevice" class="form-label">Target Device</label>
+                            <select class="form-select" id="targetDevice" name="target_device_id" required>
+                                <option value="">Select Target Device</option>
+                                {% for device in devices %}
+                                <option value="{{ device.id }}">{{ device.name }} ({{ device.ip_address }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="connectionType" class="form-label">Connection Type</label>
+                            <select class="form-select" id="connectionType" name="connection_type" required>
+                                <option value="ethernet">Ethernet</option>
+                                <option value="fiber">Fiber</option>
+                                <option value="wifi">Wi-Fi</option>
+                                <option value="console">Console</option>
+                                <option value="serial">Serial</option>
+                                <option value="virtual">Virtual</option>
+                                <option value="vpn">VPN</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="connectionStatus" class="form-label">Status</label>
+                            <select class="form-select" id="connectionStatus" name="status">
+                                <option value="active">Active</option>
+                                <option value="degraded">Degraded</option>
+                                <option value="down">Down</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="connectionBandwidth" class="form-label">Bandwidth (Mbps)</label>
+                            <input type="number" class="form-control" id="connectionBandwidth" name="bandwidth" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="sourceInterface" class="form-label">Source Interface</label>
+                            <input type="text" class="form-control" id="sourceInterface" name="interface_source" placeholder="e.g. GigabitEthernet0/1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="targetInterface" class="form-label">Target Interface</label>
+                            <input type="text" class="form-control" id="targetInterface" name="interface_target" placeholder="e.g. GigabitEthernet0/2">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="connectionDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="connectionDescription" name="description" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveConnectionBtn">Save Connection</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Connection Confirmation Modal -->
+<div class="modal fade" id="deleteConnectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this connection?</p>
+                <p id="deleteConnectionDetails"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteConnectionBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .topology-container {
+        position: relative;
+        width: 100%;
+        height: 500px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: #1e2124;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .topology-canvas {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .topology-legend {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background-color: rgba(0, 0, 0, 0.7);
+        border-radius: 4px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: white;
+        font-size: 0.8rem;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    
+    .status-up {
+        background-color: #198754;
+    }
+    
+    .status-degraded {
+        background-color: #fd7e14;
+    }
+    
+    .status-down {
+        background-color: #dc3545;
+    }
+    
+    /* D3.js Node Styles */
+    .node {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .node text {
+        font-size: 12px;
+        fill: white;
+        text-anchor: middle;
+    }
+    
+    .node circle {
+        stroke: white;
+        stroke-width: 2px;
+    }
+    
+    .node:hover circle {
+        stroke: #0dcaf0;
+        stroke-width: 3px;
+    }
+    
+    .node.active circle {
+        stroke: #0dcaf0;
+        stroke-width: 3px;
+    }
+    
+    /* D3.js Link Styles */
+    .link {
+        stroke-width: 2px;
+        cursor: pointer;
+        transition: stroke-width 0.2s ease;
+    }
+    
+    .link:hover {
+        stroke-width: 4px;
+    }
+    
+    .link.active {
+        stroke-width: 4px;
+    }
+    
+    /* Connection status colors */
+    .connection-active {
+        stroke: #0dcaf0;
+    }
+    
+    .connection-degraded {
+        stroke: #fd7e14;
+    }
+    
+    .connection-down {
+        stroke: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Global variables
+        let testModeEnabled = false;
+        let networkData = null;
+        let simulation = null;
+        let svg = null;
+        let activeConnectionId = null;
+        let connectionModal = null;
+        let deleteModal = null;
+        
+        // Initialize modals
+        connectionModal = new bootstrap.Modal(document.getElementById('connectionModal'));
+        deleteModal = new bootstrap.Modal(document.getElementById('deleteConnectionModal'));
+        
+        // Fetch initial topology data
+        fetchTopologyData();
+        
+        // Test mode toggle button
+        const testModeBtn = document.getElementById('testModeBtn');
+        const testModeText = document.getElementById('testModeText');
+        const testModeAlert = document.getElementById('testModeAlert');
+        
+        testModeBtn.addEventListener('click', toggleTestMode);
+        
+        // Layout buttons
+        document.getElementById('layoutCircleBtn').addEventListener('click', function() {
+            updateActiveLayoutButton(this);
+            applyCircleLayout();
+        });
+        
+        document.getElementById('layoutGridBtn').addEventListener('click', function() {
+            updateActiveLayoutButton(this);
+            applyGridLayout();
+        });
+        
+        document.getElementById('layoutForceBtn').addEventListener('click', function() {
+            updateActiveLayoutButton(this);
+            applyForceLayout();
+        });
+        
+        // Add connection button
+        document.getElementById('addConnectionBtn').addEventListener('click', function() {
+            resetConnectionForm();
+            document.getElementById('connectionModalTitle').textContent = 'Add Connection';
+        });
+        
+        // Edit connection button
+        document.getElementById('editConnectionBtn').addEventListener('click', function() {
+            document.getElementById('connectionModalTitle').textContent = 'Edit Connection';
+            // Form is already populated from selectConnection
+        });
+        
+        // Save connection button
+        document.getElementById('saveConnectionBtn').addEventListener('click', saveConnection);
+        
+        // Delete connection buttons
+        document.getElementById('deleteConnectionBtn').addEventListener('click', function() {
+            const connection = networkData.links.find(link => link.id === activeConnectionId);
+            if (connection) {
+                const sourceDevice = networkData.nodes.find(node => node.id === connection.source.id);
+                const targetDevice = networkData.nodes.find(node => node.id === connection.target.id);
+                
+                document.getElementById('deleteConnectionDetails').textContent = 
+                    `Connection from ${sourceDevice.name} to ${targetDevice.name} 
+                    (${connection.connection_type})`;
+                
+                deleteModal.show();
+            }
+        });
+        
+        document.getElementById('confirmDeleteConnectionBtn').addEventListener('click', function() {
+            deleteConnection(activeConnectionId);
+            deleteModal.hide();
+        });
+        
+        /**
+         * Toggle test mode on/off
+         */
+        function toggleTestMode() {
+            const newState = !testModeEnabled;
+            
+            // Update UI while waiting for response
+            testModeBtn.disabled = true;
+            
+            // Send request to server
+            fetch('/api/test-mode', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    enable: newState
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    testModeEnabled = data.test_mode;
+                    updateTestModeUI();
+                    
+                    // Refresh data
+                    fetchTopologyData();
+                } else {
+                    alert('Failed to toggle test mode: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error toggling test mode:', error);
+                alert('Error toggling test mode');
+            })
+            .finally(() => {
+                testModeBtn.disabled = false;
+            });
+        }
+        
+        /**
+         * Update test mode UI elements
+         */
+        function updateTestModeUI() {
+            if (testModeEnabled) {
+                testModeBtn.classList.remove('btn-danger');
+                testModeBtn.classList.add('btn-secondary');
+                testModeText.textContent = 'Disable Test Mode';
+                testModeAlert.style.display = 'block';
+            } else {
+                testModeBtn.classList.remove('btn-secondary');
+                testModeBtn.classList.add('btn-danger');
+                testModeText.textContent = 'Enable Test Mode';
+                testModeAlert.style.display = 'none';
+            }
+        }
+        
+        /**
+         * Check current test mode status
+         */
+        function checkTestModeStatus() {
+            fetch('/api/test-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        testModeEnabled = data.test_mode;
+                        updateTestModeUI();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking test mode status:', error);
+                });
+        }
+        
+        /**
+         * Fetch network topology data from the server
+         */
+        function fetchTopologyData() {
+            fetch('/api/topology')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        networkData = data.data;
+                        renderNetworkTopology(networkData);
+                    } else {
+                        console.error('Error fetching topology data:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching topology data:', error);
+                });
+        }
+        
+        /**
+         * Render network topology visualization using D3.js
+         */
+        function renderNetworkTopology(data) {
+            // Clear previous visualization
+            d3.select('#topology').html('');
+            
+            // Set up SVG canvas
+            const width = document.getElementById('topology').clientWidth;
+            const height = document.getElementById('topology').clientHeight;
+            
+            svg = d3.select('#topology')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+                
+            // Create force simulation
+            simulation = d3.forceSimulation(data.nodes)
+                .force('link', d3.forceLink(data.links).id(d => d.id).distance(150))
+                .force('charge', d3.forceManyBody().strength(-400))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(50));
+
+            // Create links
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(data.links)
+                .enter()
+                .append('line')
+                .attr('class', d => `link connection-${d.status}`)
+                .attr('id', d => `link-${d.id}`)
+                .on('click', selectConnection);
+                
+            // Create nodes
+            const node = svg.append('g')
+                .selectAll('.node')
+                .data(data.nodes)
+                .enter()
+                .append('g')
+                .attr('class', 'node')
+                .attr('id', d => `node-${d.id}`)
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+            
+            // Add device icons and text
+            node.append('circle')
+                .attr('r', 25)
+                .attr('fill', getNodeColor);
+                
+            // Add device type icon
+            node.append('text')
+                .attr('y', 5)
+                .text(d => getDeviceIcon(d.device_type));
+                
+            // Add device name below icon    
+            node.append('text')
+                .attr('y', 40)
+                .text(d => d.name);
+                
+            // Update positions on simulation tick
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => Math.max(30, Math.min(width - 30, d.source.x)))
+                    .attr('y1', d => Math.max(30, Math.min(height - 30, d.source.y)))
+                    .attr('x2', d => Math.max(30, Math.min(width - 30, d.target.x)))
+                    .attr('y2', d => Math.max(30, Math.min(height - 30, d.target.y)));
+
+                node
+                    .attr('transform', d => {
+                        const x = Math.max(30, Math.min(width - 30, d.x));
+                        const y = Math.max(30, Math.min(height - 30, d.y));
+                        return `translate(${x}, ${y})`;
+                    });
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                const newWidth = document.getElementById('topology').clientWidth;
+                const newHeight = document.getElementById('topology').clientHeight;
+                
+                svg.attr('width', newWidth)
+                    .attr('height', newHeight);
+                    
+                simulation.force('center', d3.forceCenter(newWidth / 2, newHeight / 2))
+                    .alpha(0.3)
+                    .restart();
+            });
+        }
+        
+        /**
+         * Get node color based on device status
+         */
+        function getNodeColor(d) {
+            if (!d.status || d.status === 'unknown') {
+                return '#6c757d';  // Secondary/gray for unknown
+            }
+            
+            switch (d.status) {
+                case 'up':
+                    return '#198754';  // Success/green
+                case 'degraded':
+                    return '#fd7e14';  // Warning/orange
+                case 'down':
+                    return '#dc3545';  // Danger/red
+                default:
+                    return '#6c757d';  // Secondary/gray
+            }
+        }
+        
+        /**
+         * Get Font Awesome icon for device type
+         */
+        function getDeviceIcon(deviceType) {
+            switch (deviceType) {
+                case 'cisco_ios':
+                case 'cisco_xe':
+                case 'cisco_nxos':
+                    return '\uf6ff';  // Network wired
+                case 'cisco_asa':
+                    return '\uf3ed';  // Shield
+                case 'juniper_junos':
+                case 'arista_eos':
+                    return '\uf233';  // Server
+                case 'paloalto_panos':
+                case 'fortinet':
+                    return '\uf49c';  // Shield alt
+                case 'linux':
+                    return '\uf17c';  // Linux
+                default:
+                    return '\uf0e8';  // Sitemap
+            }
+        }
+        
+        /**
+         * Select connection and show details
+         */
+        function selectConnection(event, d) {
+            // Deselect previously active elements
+            d3.selectAll('.link.active').classed('active', false);
+            d3.selectAll('.node.active').classed('active', false);
+            
+            // Select current connection
+            activeConnectionId = d.id;
+            d3.select(`#link-${d.id}`).classed('active', true);
+            d3.select(`#node-${d.source.id}`).classed('active', true);
+            d3.select(`#node-${d.target.id}`).classed('active', true);
+            
+            // Update connection details card
+            document.getElementById('connectionInfoCard').style.display = 'block';
+            
+            // Source device info
+            const sourceDevice = networkData.nodes.find(node => node.id === d.source.id);
+            document.getElementById('sourceDeviceInfo').innerHTML = `
+                <strong>${sourceDevice.name}</strong>
+                <div>${sourceDevice.ip_address}</div>
+                <div class="badge bg-secondary">${sourceDevice.device_type}</div>
+            `;
+            
+            // Target device info
+            const targetDevice = networkData.nodes.find(node => node.id === d.target.id);
+            document.getElementById('targetDeviceInfo').innerHTML = `
+                <strong>${targetDevice.name}</strong>
+                <div>${targetDevice.ip_address}</div>
+                <div class="badge bg-secondary">${targetDevice.device_type}</div>
+            `;
+            
+            // Connection details
+            document.getElementById('connectionType').textContent = d.connection_type;
+            
+            const statusClass = d.status === 'active' ? 'success' : 
+                (d.status === 'degraded' ? 'warning' : 'danger');
+            document.getElementById('connectionStatus').innerHTML = 
+                `<span class="badge bg-${statusClass}">${d.status}</span>`;
+                
+            document.getElementById('connectionBandwidth').textContent = 
+                d.bandwidth ? `${d.bandwidth} Mbps` : 'Not specified';
+                
+            document.getElementById('connectionSourceInterface').textContent = 
+                d.interface_source || 'Not specified';
+                
+            document.getElementById('connectionTargetInterface').textContent = 
+                d.interface_target || 'Not specified';
+                
+            document.getElementById('connectionDescription').textContent = 
+                d.description || 'No description provided';
+                
+            // Populate edit form with current connection data
+            populateConnectionForm(d);
+        }
+        
+        /**
+         * Reset connection form to default values
+         */
+        function resetConnectionForm() {
+            activeConnectionId = null;
+            document.getElementById('connectionForm').reset();
+            document.getElementById('connectionId').value = '';
+        }
+        
+        /**
+         * Populate connection form with connection data
+         */
+        function populateConnectionForm(connection) {
+            document.getElementById('connectionId').value = connection.id;
+            document.getElementById('sourceDevice').value = connection.source.id;
+            document.getElementById('targetDevice').value = connection.target.id;
+            document.getElementById('connectionType').value = connection.connection_type;
+            document.getElementById('connectionStatus').value = connection.status;
+            document.getElementById('connectionBandwidth').value = connection.bandwidth || '';
+            document.getElementById('sourceInterface').value = connection.interface_source || '';
+            document.getElementById('targetInterface').value = connection.interface_target || '';
+            document.getElementById('connectionDescription').value = connection.description || '';
+        }
+        
+        /**
+         * Save connection (create or update)
+         */
+        function saveConnection() {
+            const form = document.getElementById('connectionForm');
+            
+            // Basic form validation
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            // Get form data
+            const connectionId = document.getElementById('connectionId').value;
+            const formData = {
+                source_device_id: parseInt(document.getElementById('sourceDevice').value),
+                target_device_id: parseInt(document.getElementById('targetDevice').value),
+                connection_type: document.getElementById('connectionType').value,
+                status: document.getElementById('connectionStatus').value,
+                bandwidth: document.getElementById('connectionBandwidth').value ? 
+                    parseInt(document.getElementById('connectionBandwidth').value) : null,
+                interface_source: document.getElementById('sourceInterface').value,
+                interface_target: document.getElementById('targetInterface').value,
+                description: document.getElementById('connectionDescription').value
+            };
+            
+            // Validate that source and target are different
+            if (formData.source_device_id === formData.target_device_id) {
+                alert('Source and target devices must be different');
+                return;
+            }
+            
+            // Determine if this is an edit or create operation
+            const url = connectionId ? 
+                `/api/connections/${connectionId}` : 
+                '/api/connections';
+                
+            const method = connectionId ? 'PUT' : 'POST';
+            
+            // Send request to server
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Refresh topology data
+                    fetchTopologyData();
+                    connectionModal.hide();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error saving connection:', error);
+                alert('Error saving connection');
+            });
+        }
+        
+        /**
+         * Delete connection
+         */
+        function deleteConnection(connectionId) {
+            fetch(`/api/connections/${connectionId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Hide connection info card
+                    document.getElementById('connectionInfoCard').style.display = 'none';
+                    
+                    // Refresh topology data
+                    fetchTopologyData();
+                    activeConnectionId = null;
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting connection:', error);
+                alert('Error deleting connection');
+            });
+        }
+        
+        /**
+         * Update active layout button
+         */
+        function updateActiveLayoutButton(button) {
+            document.querySelectorAll('.btn-group .btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            button.classList.add('active');
+        }
+        
+        /**
+         * Apply circle layout
+         */
+        function applyCircleLayout() {
+            if (!simulation || !networkData) return;
+            
+            // Stop current simulation
+            simulation.stop();
+            
+            const width = document.getElementById('topology').clientWidth;
+            const height = document.getElementById('topology').clientHeight;
+            const radius = Math.min(width, height) / 2 - 100;
+            const nodeCount = networkData.nodes.length;
+            
+            // Position nodes in a circle
+            networkData.nodes.forEach((node, i) => {
+                const angle = (i / nodeCount) * 2 * Math.PI;
+                node.x = width / 2 + radius * Math.cos(angle);
+                node.y = height / 2 + radius * Math.sin(angle);
+                node.fx = node.x;
+                node.fy = node.y;
+            });
+            
+            // Update visualization
+            simulation.alpha(0.1).restart();
+            
+            // Release fixed positions after a short delay
+            setTimeout(() => {
+                networkData.nodes.forEach(node => {
+                    node.fx = null;
+                    node.fy = null;
+                });
+            }, 1500);
+        }
+        
+        /**
+         * Apply grid layout
+         */
+        function applyGridLayout() {
+            if (!simulation || !networkData) return;
+            
+            // Stop current simulation
+            simulation.stop();
+            
+            const width = document.getElementById('topology').clientWidth;
+            const height = document.getElementById('topology').clientHeight;
+            const nodeCount = networkData.nodes.length;
+            
+            // Calculate grid dimensions
+            const cols = Math.ceil(Math.sqrt(nodeCount));
+            const cellWidth = width / (cols + 1);
+            const cellHeight = height / (Math.ceil(nodeCount / cols) + 1);
+            
+            // Position nodes in a grid
+            networkData.nodes.forEach((node, i) => {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                node.x = cellWidth * (col + 1);
+                node.y = cellHeight * (row + 1);
+                node.fx = node.x;
+                node.fy = node.y;
+            });
+            
+            // Update visualization
+            simulation.alpha(0.1).restart();
+            
+            // Release fixed positions after a short delay
+            setTimeout(() => {
+                networkData.nodes.forEach(node => {
+                    node.fx = null;
+                    node.fy = null;
+                });
+            }, 1500);
+        }
+        
+        /**
+         * Apply force-directed layout
+         */
+        function applyForceLayout() {
+            if (!simulation || !networkData) return;
+            
+            // Clear any fixed positions
+            networkData.nodes.forEach(node => {
+                node.fx = null;
+                node.fy = null;
+            });
+            
+            // Restart simulation with high alpha to reorganize
+            simulation.alpha(0.5).restart();
+        }
+        
+        /**
+         * D3 drag start handler
+         */
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        /**
+         * D3 drag handler
+         */
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        /**
+         * D3 drag end handler
+         */
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        // Check test mode status on page load
+        checkTestModeStatus();
+    });
+</script>
+{% endblock %}

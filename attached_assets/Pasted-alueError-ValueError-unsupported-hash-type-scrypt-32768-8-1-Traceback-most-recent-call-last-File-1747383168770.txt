@@ -1,0 +1,69 @@
+alueError
+ValueError: unsupported hash type scrypt:32768:8:1
+
+Traceback (most recent call last)
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/hmac.py", line 60, in __init__
+self._init_hmac(key, msg, digestmod)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/hmac.py", line 67, in _init_hmac
+self._hmac = _hashopenssl.hmac_new(key, msg, digestmod=digestmod)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+During handling of the above exception, another exception occurred:
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/hashlib.py", line 160, in __hash_new
+return _hashlib.new(name, data, **kwargs)
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+During handling of the above exception, another exception occurred:
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 2552, in __call__
+return self.wsgi_app(environ, start_response)
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 2532, in wsgi_app
+response = self.handle_exception(e)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 2529, in wsgi_app
+response = self.full_dispatch_request()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 1825, in full_dispatch_request
+rv = self.handle_user_exception(e)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 1823, in full_dispatch_request
+rv = self.dispatch_request()
+     ^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 1799, in dispatch_request
+return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/app.py", line 236, in login
+if user and password and check_password_hash(user.password_hash, password):
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/security.py", line 107, in check_password_hash
+return hmac.compare_digest(_hash_internal(method, salt, password)[0], hashval)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/security.py", line 55, in _hash_internal
+return hmac.new(salt, password, method).hexdigest(), method
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/hmac.py", line 184, in new
+return HMAC(key, msg, digestmod)
+       ^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/hmac.py", line 62, in __init__
+self._init_old(key, msg, digestmod)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/hmac.py", line 80, in _init_old
+self._outer = digest_cons()
+              ^^^^^^^^^^^^^
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/hmac.py", line 75, in <lambda>
+digest_cons = lambda d=b'': _hashlib.new(digestmod, d)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/hashlib.py", line 166, in __hash_new
+return __get_builtin_constructor(name)(data)
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/nix/store/clx0mcir7qw8zk36zbr4jra789g3knf6-python3-3.11.10/lib/python3.11/hashlib.py", line 123, in __get_builtin_constructor
+raise ValueError('unsupported hash type ' + name)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: unsupported hash type scrypt:32768:8:1
+The debugger caught an exception in your WSGI application. You can now look at the traceback which led to the error.
+To switch between the interactive traceback and the plaintext one, you can click on the "Traceback" headline. From the text traceback you can also create a paste of it. For code execution mouse-over the frame you want to debug and click on the console icon on the right side.
+
+You can execute arbitrary Python code in the stack frames and there are some extra helpers available for introspection:
+
+dump() shows all variables in the frame
+dump(obj) dumps all that's known about the object
+Brought to you by DON'T PANIC, your friendly Werkzeug powered traceback interpreter.

@@ -1,0 +1,14 @@
+flask==2.2.5
+werkzeug==2.2.3
+flask-sqlalchemy>=3.0.0
+flask-login
+netmiko==3.3.3
+gunicorn
+scikit-learn
+textfsm==1.1.2
+email-validator
+flask-dance
+oauthlib
+pyjwt
+psycopg2-binary
+telnetlib3>=0.2.0

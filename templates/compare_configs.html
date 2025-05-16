@@ -1,0 +1,149 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="fas fa-code-branch"></i> Configuration Comparison</h1>
+        <p class="lead">Compare device configuration backups to identify changes</p>
+    </div>
+    <div class="col-md-auto">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> Select Device and Backups</h5>
+            </div>
+            <div class="card-body">
+                <!-- Device Selection -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <form method="GET" action="{{ url_for('compare_configs') }}">
+                            <div class="mb-3">
+                                <label for="device_id" class="form-label">Select Device</label>
+                                <select class="form-select" id="device_id" name="device_id" onchange="this.form.submit()">
+                                    <option value="">-- Select a device --</option>
+                                    {% for device in devices %}
+                                    <option value="{{ device.id }}" {% if selected_device and selected_device.id == device.id %}selected{% endif %}>
+                                        {{ device.name }} ({{ device.ip_address }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                {% if selected_device %}
+                <!-- Backup Selection -->
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="mb-3">
+                            <label for="backup1Select" class="form-label">First Backup (Older)</label>
+                            <select class="form-select" id="backup1Select">
+                                <option value="">-- Select a backup --</option>
+                                {% for backup in backups %}
+                                <option value="{{ backup.id }}">
+                                    {{ backup.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-center justify-content-center">
+                        <div class="text-center">
+                            <i class="fas fa-exchange-alt fa-2x"></i>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="mb-3">
+                            <label for="backup2Select" class="form-label">Second Backup (Newer)</label>
+                            <select class="form-select" id="backup2Select">
+                                <option value="">-- Select a backup --</option>
+                                {% for backup in backups %}
+                                <option value="{{ backup.id }}">
+                                    {{ backup.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <button class="btn btn-primary" id="compareConfigsBtn">
+                        <i class="fas fa-code-branch"></i> Compare Configurations
+                    </button>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Please select a device to see available backups for comparison.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if selected_device %}
+<!-- Comparison Results -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-diff"></i> Configuration Differences</h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="configDiffOutput" class="p-4">
+                    <div class="text-center py-5">
+                        <i class="fas fa-code-branch fa-3x mb-3 text-muted"></i>
+                        <p>Select two backups and click "Compare Configurations" to see the differences.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Backup Info Modal -->
+<div class="modal fade" id="backupInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-info-circle"></i> Backup Information</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="backupInfoContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-select the most recent backup for the second selector
+        const backup2Select = document.getElementById('backup2Select');
+        if (backup2Select && backup2Select.options.length > 1) {
+            backup2Select.selectedIndex = 1;
+        }
+        
+        // Auto-select the second most recent backup for the first selector
+        const backup1Select = document.getElementById('backup1Select');
+        if (backup1Select && backup1Select.options.length > 2) {
+            backup1Select.selectedIndex = 2;
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,530 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="fas fa-chart-line"></i> Device Monitoring</h1>
+        <p class="lead">Real-time network device monitoring and telemetry</p>
+    </div>
+    <div class="col-md-auto">
+        <div class="btn-group" role="group" aria-label="Actions">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <button id="testModeBtn" class="btn btn-danger">
+                <i class="fas fa-vial"></i> <span id="testModeText">Enable Test Mode</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Test Mode Alert -->
+<div id="testModeAlert" class="alert alert-danger mb-4" style="display: none;">
+    <div class="d-flex align-items-center">
+        <div class="flex-shrink-0">
+            <i class="fas fa-flask fa-2x me-3"></i>
+        </div>
+        <div class="flex-grow-1">
+            <h4 class="alert-heading">Test Mode Active</h4>
+            <p class="mb-0">Test mode is enabled. All data shown is simulated for demonstration purposes.</p>
+        </div>
+    </div>
+</div>
+
+{% if devices %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> Select Device</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('device_monitoring') }}">
+                    <div class="mb-3">
+                        <label for="device_id" class="form-label">Device</label>
+                        <select class="form-select" id="device_id" name="device_id" onchange="this.form.submit()">
+                            <option value="">-- Select a device --</option>
+                            {% for device in devices %}
+                            <option value="{{ device.id }}" {% if selected_device and selected_device.id == device.id %}selected{% endif %}>
+                                {{ device.name }} ({{ device.ip_address }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if selected_device %}
+<div class="row">
+    <!-- Current Status Card -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-heartbeat"></i> Current Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div id="statusIndicator" class="statusIndicator mx-auto mb-3">
+                        <i class="fas fa-circle fa-3x"></i>
+                    </div>
+                    <h3 id="statusText" class="mb-0">Loading...</h3>
+                </div>
+                
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-tachometer-alt"></i> Latency</span>
+                        <span id="latencyValue" class="badge bg-primary rounded-pill">--</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-exclamation-triangle"></i> Packet Loss</span>
+                        <span id="packetLossValue" class="badge bg-warning rounded-pill">--</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-clock"></i> Last Updated</span>
+                        <span id="lastUpdatedValue">--</span>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <button id="refreshPingBtn" class="btn btn-primary">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                    <button id="runSecurityAuditBtn" class="btn btn-warning ml-2">
+                        <i class="fas fa-shield-alt"></i> Run Security Audit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Latency Chart Card -->
+    <div class="col-md-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-chart-line"></i> Ping Telemetry</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <select id="timeRangeSelect" class="form-select">
+                        <option value="1">Last Hour</option>
+                        <option value="6">Last 6 Hours</option>
+                        <option value="24" selected>Last 24 Hours</option>
+                        <option value="72">Last 3 Days</option>
+                        <option value="168">Last Week</option>
+                    </select>
+                </div>
+                <div class="chart-container" style="position: relative; height:300px;">
+                    <canvas id="pingChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Security Audit Results Modal -->
+<div class="modal fade" id="securityAuditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-shield-alt"></i> Security Audit Results</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="securityAuditResults">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Running security audit, please wait...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a id="viewDetailsBtn" href="#" class="btn btn-primary">View Full Details</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle"></i> Please select a device from the dropdown to view monitoring information.
+</div>
+{% endif %}
+
+{% else %}
+<div class="alert alert-warning">
+    <i class="fas fa-exclamation-triangle"></i> No devices found. Please <a href="{{ url_for('devices') }}">add a device</a> first.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if selected_device %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const deviceId = {{ selected_device.id }};
+    let testModeEnabled = false;
+    let pingChart = null;
+    
+    // Format date for display
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleString();
+    }
+    
+    // Format short time for chart labels
+    function formatTime(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Update device status indicator
+    function updateStatusIndicator(status) {
+        const indicator = document.getElementById('statusIndicator');
+        const text = document.getElementById('statusText');
+        
+        indicator.className = 'statusIndicator mx-auto mb-3';
+        
+        if (status === 'up') {
+            indicator.classList.add('status-up');
+            text.textContent = 'Online';
+            text.className = 'mb-0 text-success';
+        } else if (status === 'degraded') {
+            indicator.classList.add('status-degraded');
+            text.textContent = 'Degraded';
+            text.className = 'mb-0 text-warning';
+        } else if (status === 'down') {
+            indicator.classList.add('status-down');
+            text.textContent = 'Offline';
+            text.className = 'mb-0 text-danger';
+        } else {
+            indicator.classList.add('status-unknown');
+            text.textContent = 'Unknown';
+            text.className = 'mb-0 text-muted';
+        }
+    }
+    
+    // Fetch current ping data for the device
+    function fetchPingData() {
+        fetch(`/api/devices/${deviceId}/ping`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const telemetry = data.telemetry;
+                    
+                    // Update status indicator
+                    updateStatusIndicator(telemetry.status);
+                    
+                    // Update telemetry values
+                    document.getElementById('latencyValue').textContent = 
+                        telemetry.latency_ms.toFixed(2) + ' ms';
+                    document.getElementById('packetLossValue').textContent = 
+                        telemetry.packet_loss.toFixed(1) + '%';
+                    document.getElementById('lastUpdatedValue').textContent = 
+                        formatDate(telemetry.timestamp);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching ping data:', error);
+            });
+    }
+    
+    // Fetch ping history and update chart
+    function fetchPingHistory() {
+        const hours = document.getElementById('timeRangeSelect').value;
+        
+        fetch(`/api/devices/${deviceId}/ping_history?hours=${hours}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    updateChart(
+                        data.timestamps, 
+                        data.latencies, 
+                        data.packet_losses
+                    );
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching ping history:', error);
+            });
+    }
+    
+    // Create or update the ping chart
+    function updateChart(timestamps, latencies, packetLosses) {
+        const ctx = document.getElementById('pingChart').getContext('2d');
+        
+        // Format timestamps for display
+        const labels = timestamps.map(timestamp => formatTime(timestamp));
+        
+        if (pingChart) {
+            // Update existing chart
+            pingChart.data.labels = labels;
+            pingChart.data.datasets[0].data = latencies;
+            pingChart.data.datasets[1].data = packetLosses;
+            pingChart.update();
+        } else {
+            // Create new chart
+            pingChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Latency (ms)',
+                            data: latencies,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Packet Loss (%)',
+                            data: packetLosses,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            tension: 0.1,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Latency (ms)'
+                            }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Packet Loss (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+    }
+    
+    // Run a security audit
+    function runSecurityAudit() {
+        const modal = new bootstrap.Modal(document.getElementById('securityAuditModal'));
+        modal.show();
+        
+        // Reset results area
+        document.getElementById('securityAuditResults').innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Running security audit, please wait...</p>
+            </div>
+        `;
+        
+        // Run the audit
+        fetch(`/api/devices/${deviceId}/security_audit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Update results
+                const resultsHtml = `
+                    <div class="text-center mb-4">
+                        <div class="progress" style="height: 30px;">
+                            <div class="progress-bar bg-${getScoreColor(data.score)}" 
+                                role="progressbar" 
+                                style="width: ${data.score}%;"
+                                aria-valuenow="${data.score}" 
+                                aria-valuemin="0" 
+                                aria-valuemax="100">
+                                ${data.score.toFixed(1)}%
+                            </div>
+                        </div>
+                        <p class="mt-2">
+                            <strong>Passed:</strong> ${data.passed_checks} of ${data.total_checks} checks
+                        </p>
+                    </div>
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> Security audit completed successfully.
+                    </div>
+                `;
+                
+                document.getElementById('securityAuditResults').innerHTML = resultsHtml;
+                
+                // Update view details link
+                document.getElementById('viewDetailsBtn').href = `/security_audit/${data.audit_id}`;
+            } else {
+                // Show error
+                document.getElementById('securityAuditResults').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> ${data.message}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error running security audit:', error);
+            document.getElementById('securityAuditResults').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> An error occurred while running the security audit.
+                </div>
+            `;
+        });
+    }
+    
+    // Get color based on score
+    function getScoreColor(score) {
+        if (score >= 80) return 'success';
+        if (score >= 60) return 'info';
+        if (score >= 40) return 'warning';
+        return 'danger';
+    }
+    
+    // Toggle test mode
+    function toggleTestMode() {
+        const newState = !testModeEnabled;
+        
+        // Update UI while waiting for response
+        const testModeBtn = document.getElementById('testModeBtn');
+        const testModeText = document.getElementById('testModeText');
+        testModeBtn.disabled = true;
+        
+        // Send request to server
+        fetch('/api/test-mode', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                enable: newState
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                testModeEnabled = data.test_mode;
+                updateTestModeUI();
+                
+                // Refresh data
+                fetchPingData();
+                fetchPingHistory();
+            } else {
+                alert('Failed to toggle test mode: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error toggling test mode:', error);
+            alert('Error toggling test mode');
+        })
+        .finally(() => {
+            testModeBtn.disabled = false;
+        });
+    }
+    
+    // Update test mode UI
+    function updateTestModeUI() {
+        const testModeBtn = document.getElementById('testModeBtn');
+        const testModeText = document.getElementById('testModeText');
+        const testModeAlert = document.getElementById('testModeAlert');
+        
+        if (testModeEnabled) {
+            testModeBtn.classList.remove('btn-danger');
+            testModeBtn.classList.add('btn-secondary');
+            testModeText.textContent = 'Disable Test Mode';
+            testModeAlert.style.display = 'block';
+        } else {
+            testModeBtn.classList.remove('btn-secondary');
+            testModeBtn.classList.add('btn-danger');
+            testModeText.textContent = 'Enable Test Mode';
+            testModeAlert.style.display = 'none';
+        }
+    }
+    
+    // Check current test mode status
+    function checkTestModeStatus() {
+        fetch('/api/test-status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    testModeEnabled = data.test_mode;
+                    updateTestModeUI();
+                }
+            })
+            .catch(error => {
+                console.error('Error checking test mode status:', error);
+            });
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check test mode status
+        checkTestModeStatus();
+        
+        // Fetch initial data
+        fetchPingData();
+        fetchPingHistory();
+        
+        // Set up refresh button
+        document.getElementById('refreshPingBtn').addEventListener('click', fetchPingData);
+        
+        // Set up time range select
+        document.getElementById('timeRangeSelect').addEventListener('change', fetchPingHistory);
+        
+        // Set up security audit button
+        document.getElementById('runSecurityAuditBtn').addEventListener('click', runSecurityAudit);
+        
+        // Set up test mode button
+        document.getElementById('testModeBtn').addEventListener('click', toggleTestMode);
+        
+        // Auto refresh every 30 seconds
+        setInterval(fetchPingData, 30000);
+    });
+</script>
+
+<style>
+    .statusIndicator {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+    
+    .status-up {
+        color: #28a745;
+    }
+    
+    .status-degraded {
+        color: #ffc107;
+    }
+    
+    .status-down {
+        color: #dc3545;
+    }
+    
+    .status-unknown {
+        color: #6c757d;
+    }
+</style>
+{% endif %}
+{% endblock %}
